@@ -1,0 +1,12 @@
+User: source /home/rodrigo/Desktop/AI/forge-insight-suite/.venv/bin/activate
+User: source /home/rodrigo/Desktop/AI/forge-insight-suite/.venv/bin/activate
+Model response saved in history.
+User: ok?
+User: source /home/rodrigo/Desktop/AI/forge-insight-suite/.venv/bin/activate
+Model: 
+User: source /home/rodrigo/Desktop/AI/forge-insight-suite/.venv/bin/activate
+---------------------------
+Model: 
+---------------------------
+User: source /home/rodrigo/Desktop/AI/forge-insight-suite/.venv/bin/activate
+---------------------------

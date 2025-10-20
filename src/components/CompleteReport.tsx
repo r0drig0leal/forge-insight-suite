@@ -1,0 +1,1055 @@
+import { FileText, Download, Database, TrendingUp, AlertTriangle, Home, Users, DollarSign, Calendar, MapPin, Building2, Shield, FileCheck, School, Wrench, Gavel, Zap, Image, ExternalLink } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { AnimatedCounter } from "@/components/AnimatedCounter";
+import { motion } from "framer-motion";
+import { 
+  PropertyData, 
+  TaxRecord, 
+  TaxHistoryIssue, 
+  NeighborSale, 
+  Demographics, 
+  Building, 
+  PropertyAnalytics,
+  AdValoremTax,
+  BuildingFeature,
+  BuildingSubarea,
+  Community,
+  PropertyDocument,
+  ExtraFeature,
+  PropertyImage,
+  LandArea,
+  LandFeature,
+  LegalDescription,
+  NonAdValoremTax,
+  PropertyOfficial,
+  SalesRecord,
+  School as SchoolType,
+  PropertyService
+} from "@/lib/mockData";
+import { CompletePropertyData, exportToPDF, exportToJSON, exportToCSV } from "@/lib/exportUtils";
+import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
+import floorPlanImage from "@/assets/floor-plan.jpg";
+
+interface CompleteReportProps {
+  property: PropertyData;
+  taxRecords: TaxRecord[];
+  taxIssues: TaxHistoryIssue[];
+  neighborSales: NeighborSale[];
+  demographics: Demographics | null;
+  building: Building | null;
+  analytics: PropertyAnalytics;
+}
+
+export const CompleteReport = ({ 
+  property, 
+  taxRecords, 
+  taxIssues, 
+  neighborSales, 
+  demographics, 
+  building, 
+  analytics 
+}: CompleteReportProps) => {
+  const { toast } = useToast();
+  const [documents, setDocuments] = useState<PropertyDocument[]>([]);
+  const [images, setImages] = useState<PropertyImage[]>([]);
+  const [loadingAssets, setLoadingAssets] = useState(true);
+
+  // Fetch additional data on component mount
+  useEffect(() => {
+    const fetchAdditionalData = async () => {
+      try {
+        // Simulate document and image data fetching
+        const documentsData = documents.length > 0 ? documents : [
+          { parcel_id: property.parcel_id, doc_type: "Deed", doc_number: `DOC${property.parcel_id}`, doc_date: "2023-01-15", file_url: "#", description: "Property Deed" },
+          { parcel_id: property.parcel_id, doc_type: "Survey", doc_number: `SUR${property.parcel_id}`, doc_date: "2023-02-10", file_url: "#", description: "Property Survey" },
+          { parcel_id: property.parcel_id, doc_type: "Appraisal", doc_number: `APR${property.parcel_id}`, doc_date: "2023-03-05", file_url: "#", description: "Property Appraisal" },
+        ];
+        
+        const imagesData = images.length > 0 ? images : [
+          { parcel_id: property.parcel_id, image_url: "https://placeholder.com/800x600/4f46e5/ffffff?text=Front+View", description: "Front Exterior View" },
+          { parcel_id: property.parcel_id, image_url: "https://placeholder.com/800x600/059669/ffffff?text=Pool+Area", description: "Pool & Deck Area" },
+          { parcel_id: property.parcel_id, image_url: floorPlanImage, description: "Property Floor Plan" },
+          { parcel_id: property.parcel_id, image_url: "https://placeholder.com/800x600/dc2626/ffffff?text=Living+Room", description: "Main Living Room" },
+        ];
+        
+        setDocuments(documentsData);
+        setImages(imagesData);
+      } catch (error) {
+        console.error("Error fetching additional data:", error);
+      } finally {
+        setLoadingAssets(false);
+      }
+    };
+
+    fetchAdditionalData();
+  }, [property.parcel_id]);
+  
+  const completeData: CompletePropertyData = {
+    property,
+    adValoremTax: [], // Populated from mock data
+    buildingFeatures: [],
+    buildingSubareas: [],
+    buildings: building ? [building] : [],
+    community: null,
+    demographics,
+    propertyDocuments: documents,
+    extraFeatures: [],
+    propertyImages: images,
+    landAreas: null,
+    landFeatures: [],
+    legalDescriptions: null,
+    neighborSales,
+    nonAdValoremTax: [],
+    propertyOfficials: [],
+    salesRecords: [],
+    schools: [],
+    propertyServices: [],
+    taxRecords,
+    taxHistoryIssues: taxIssues,
+    analytics
+  };
+
+  const handleExportPDF = () => {
+    try {
+      exportToPDF(completeData);
+      toast({
+        title: "Report exported!",
+        description: "The PDF report was downloaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export error",
+        description: "Could not generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportJSON = () => {
+    try {
+      exportToJSON(completeData);
+      toast({
+        title: "Data exported!",
+        description: "The JSON data was downloaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export error", 
+        description: "Could not generate JSON. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportCSV = () => {
+    try {
+      exportToCSV(completeData);
+      toast({
+        title: "Data exported!",
+        description: "The CSV data was downloaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export error",
+        description: "Could not generate CSV. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const currentTax = taxRecords[0];
+  const currentIssue = taxIssues[0];
+
+  return (
+    <motion.div 
+      className="space-y-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* Header with Export Options */}
+      <Card className="shadow-medium animate-fade-in hover-scale transition-smooth">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <FileText className="h-6 w-6 text-primary" />
+                Complete Property Report - {property.parcel_id}
+              </CardTitle>
+              <p className="text-muted-foreground mt-1">
+                Comprehensive analysis of all available property data and records
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleExportPDF} className="hero-gradient">
+                <Download className="h-4 w-4 mr-2" />
+                PDF Report
+              </Button>
+              <Button onClick={handleExportJSON} variant="outline">
+                <Database className="h-4 w-4 mr-2" />
+                JSON Data
+              </Button>
+              <Button onClick={handleExportCSV} variant="outline">
+                <FileText className="h-4 w-4 mr-2" />
+                CSV Export
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Executive Summary */}
+      <Card className="shadow-medium animate-fade-in hover-scale transition-smooth">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Executive Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="text-center p-4 rounded-lg bg-primary/10">
+              <div className="text-3xl font-bold text-primary mb-2">
+                $<AnimatedCounter value={property.current_market_value} duration={2.5} delay={0.3} />
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">Current Market Value</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-secondary/10">
+              <div className="text-3xl font-bold text-secondary mb-2">
+                <AnimatedCounter value={parseFloat(analytics.overallRiskScore.toFixed(0))} duration={2.5} delay={0.5} />%
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">Overall Risk Score</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-accent/10">
+              <div className="text-3xl font-bold text-accent mb-2">
+                <AnimatedCounter value={parseFloat(analytics.potentialROI.toFixed(1))} duration={2.5} delay={0.7} />%
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">ROI Potential</p>
+            </div>
+            <div className="text-center p-4 rounded-lg bg-muted/30">
+              <div className="text-3xl font-bold text-foreground mb-2">
+                $<AnimatedCounter value={property.potential_rent_income} duration={2.5} delay={0.9} />
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">Annual Rent Potential</p>
+            </div>
+          </div>
+          
+          <div className="bg-muted/20 p-4 rounded-lg">
+            <h4 className="font-semibold mb-2">AI Analysis Summary</h4>
+            <p className="text-muted-foreground leading-relaxed">{analytics.aiNarrative}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Property Identification & Ownership */}
+      <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Home className="h-5 w-5 text-primary" />
+            Property Identification & Ownership
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-3">
+              <h4 className="font-semibold text-primary">Property Details</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Parcel ID:</span>
+                  <Badge variant="outline">{property.parcel_id}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">County ID:</span>
+                  <span className="font-medium">{property.county_id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax Year:</span>
+                  <span className="font-medium">{property.tax_year}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Country:</span>
+                  <span className="font-medium">{property.country}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-primary">Owner Information</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Owner Name:</span>
+                  <span className="font-medium">{property.owner_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Occupancy:</span>
+                  <Badge variant="secondary">{property.occupancy_status}</Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-primary">Location Details</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Street Number:</span>
+                  <span className="font-medium">{property.street_number}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Street Name:</span>
+                  <span className="font-medium">{property.street_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Full Address:</span>
+                  <span className="font-medium text-right max-w-[200px]">{property.property_address}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">City, State ZIP:</span>
+                  <span className="font-medium">{property.property_city}, {property.property_state} {property.property_zip}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Physical Property Details */}
+      {building && (
+        <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              Physical Property Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary">Basic Information</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Building ID:</span>
+                    <span className="font-medium">{building.building_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Building Number:</span>
+                    <span className="font-medium">{building.building_num}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Description:</span>
+                    <span className="font-medium text-right max-w-[150px]">{building.desc_bldg}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">DOR Code:</span>
+                    <span className="font-medium">{building.bldg_dor_code}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary">Size & Layout</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Bedrooms:</span>
+                    <span className="font-bold text-primary">
+                      <AnimatedCounter value={building.beds} duration={1.5} delay={1.1} />
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Bathrooms:</span>
+                    <span className="font-bold text-primary">
+                      <AnimatedCounter value={building.baths} duration={1.5} delay={1.2} />
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Floors:</span>
+                    <span className="font-medium">
+                      <AnimatedCounter value={building.floors} duration={1.5} delay={1.3} />
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Living Area:</span>
+                    <span className="font-bold text-secondary">
+                      <AnimatedCounter value={building.living_area} duration={2} delay={1.4} /> sq ft
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Gross Area:</span>
+                    <span className="font-medium">
+                      <AnimatedCounter value={building.gross_area} duration={2} delay={1.5} /> sq ft
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary">Construction & Value</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Year Built:</span>
+                    <span className="font-medium">
+                      <AnimatedCounter value={building.date_built} duration={2} delay={1.6} />
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Age:</span>
+                    <span className="font-medium">
+                      <AnimatedCounter value={new Date().getFullYear() - building.date_built} duration={1.5} delay={1.7} /> years
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Exterior Wall:</span>
+                    <span className="font-medium">{building.ext_wall}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Interior Wall:</span>
+                    <span className="font-medium">{building.int_wall}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Building Value:</span>
+                    <span className="font-bold text-primary">$<AnimatedCounter value={building.bldg_value} duration={2} delay={1.8} /></span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Est. New Cost:</span>
+                    <span className="font-medium">$<AnimatedCounter value={building.est_new_cost} duration={2} delay={1.9} /></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Property Valuation & Financials */}
+      <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-primary" />
+            Property Valuation & Financial Analysis
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-3">
+              <h4 className="font-semibold text-primary">Current Valuations</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Market Value:</span>
+                  <span className="font-bold text-primary">$<AnimatedCounter value={property.current_market_value} duration={2} delay={1.2} /></span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Assessed Value:</span>
+                  <span className="font-bold text-secondary">$<AnimatedCounter value={property.assessed_value} duration={2} delay={1.4} /></span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Assessment Ratio:</span>
+                  <span className="font-medium">
+                    <AnimatedCounter value={parseFloat(((property.assessed_value / property.current_market_value) * 100).toFixed(1))} duration={1.5} delay={1.6} />%
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Value Difference:</span>
+                  <span className={`font-medium ${property.current_market_value > property.assessed_value ? 'text-secondary' : 'text-destructive'}`}>
+                    $<AnimatedCounter value={Math.abs(property.current_market_value - property.assessed_value)} duration={2} delay={1.8} />
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-primary">Investment Metrics</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Potential Annual Rent:</span>
+                  <span className="font-bold text-secondary">$<AnimatedCounter value={property.potential_rent_income} duration={2} delay={1.3} /></span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Monthly Rent Est.:</span>
+                  <span className="font-medium">$<AnimatedCounter value={parseInt((property.potential_rent_income / 12).toFixed(0))} duration={1.5} delay={1.5} /></span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ROI Potential:</span>
+                  <span className="font-bold text-accent">
+                    <AnimatedCounter value={parseFloat(analytics.potentialROI.toFixed(1))} duration={1.5} delay={1.7} />%
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">vs Neighborhood:</span>
+                  <span className={`font-medium ${analytics.neighborBenchmark > 0 ? 'text-secondary' : 'text-destructive'}`}>
+                    {analytics.neighborBenchmark > 0 ? '+' : ''}<AnimatedCounter value={parseFloat(Math.abs(analytics.neighborBenchmark).toFixed(1))} duration={1.5} delay={1.9} />%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-primary">Cost Estimates</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Renovation Cost:</span>
+                  <span className="font-medium">${property.estimated_renovation_cost.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Eviction Cost:</span>
+                  <span className="font-medium">${property.estimated_eviction_cost.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Risk Score:</span>
+                  <Badge variant="outline" className="bg-risk-medium/10 text-risk-medium border-risk-medium/20">
+                    {property.risk_score}%
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tax Records & Assessment Details */}
+      {currentTax && (
+        <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileCheck className="h-5 w-5 text-primary" />
+              Tax Records & Assessment Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary">Assessment Information</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tax Year:</span>
+                    <span className="font-medium">{currentTax.tax_year}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Market %:</span>
+                    <span className="font-medium">{currentTax.market_percent}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Assessed %:</span>
+                    <span className="font-medium">{currentTax.assessed_percent}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Valuation Method:</span>
+                    <span className="font-medium">{currentTax.valuation_method}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Certified:</span>
+                    <Badge variant={currentTax.is_certified ? "default" : "secondary"}>
+                      {currentTax.is_certified ? "Yes" : "No"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary">Value Breakdown</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Land Value:</span>
+                    <span className="font-medium">${currentTax.land_value.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Building Value:</span>
+                    <span className="font-medium">${currentTax.building_value.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Features Value:</span>
+                    <span className="font-medium">${currentTax.features_value.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Market Value:</span>
+                    <span className="font-bold text-primary">${currentTax.market_value.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Assessed:</span>
+                    <span className="font-bold text-secondary">${currentTax.assessed_value.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary">Exemptions & Benefits</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Homestead:</span>
+                    <Badge variant={currentTax.is_homestead ? "default" : "secondary"}>
+                      {currentTax.is_homestead ? "Yes" : "No"}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Agricultural:</span>
+                    <Badge variant={currentTax.is_ag ? "default" : "secondary"}>
+                      {currentTax.is_ag ? "Yes" : "No"}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Original HX:</span>
+                    <span className="font-medium">${currentTax.original_hx.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Additional HX:</span>
+                    <span className="font-medium">${currentTax.additional_hx.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Other Exemptions:</span>
+                    <span className="font-medium">${currentTax.other_exemptions.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tax Savings:</span>
+                    <span className="font-bold text-secondary">${currentTax.tax_savings.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Land Information */}
+      <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-primary" />
+            Land Information & Features
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-3">
+              <h4 className="font-semibold text-primary">Land Size</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Acreage:</span>
+                  <span className="font-bold text-primary">{property.acreage.toFixed(2)} acres</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Square Feet:</span>
+                  <span className="font-bold text-secondary">{property.sqft.toLocaleString()} sq ft</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Land per SqFt:</span>
+                  <span className="font-medium">${(currentTax?.land_value || 0 / property.sqft).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-primary">Zoning & Use</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Current Use:</span>
+                  <Badge variant="outline">Residential</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Development Potential:</span>
+                  <Badge variant="secondary">Standard</Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-primary">Land Value</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Land Value:</span>
+                  <span className="font-bold text-primary">${currentTax?.land_value.toLocaleString() || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">% of Total Value:</span>
+                  <span className="font-medium">
+                    {currentTax ? ((currentTax.land_value / currentTax.market_value) * 100).toFixed(1) : 'N/A'}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Demographics & Community */}
+      {demographics && (
+        <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Demographics & Community Profile
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary">Population Data</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Population:</span>
+                    <span className="font-bold text-primary">{demographics.total_population.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Area:</span>
+                    <span className="font-medium">{demographics.total_area} sq mi</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Population Density:</span>
+                    <span className="font-medium">{demographics.population_density.toLocaleString()}/sq mi</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Diversity Index:</span>
+                    <span className="font-medium">{demographics.diversity_index.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary">Housing Market</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Households:</span>
+                    <span className="font-medium">{demographics.total_households.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">SFR Homes:</span>
+                    <span className="font-medium">{demographics.sfr_home_count.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Condos:</span>
+                    <span className="font-medium">{demographics.residential_condo_count.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">SFR/Condo Ratio:</span>
+                    <span className="font-medium">{(demographics.sfr_home_count / demographics.residential_condo_count).toFixed(1)}:1</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary">Market Values</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Median SFR Value:</span>
+                    <span className="font-bold text-secondary">${demographics.median_sfr_market_value.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Median Condo Value:</span>
+                    <span className="font-medium">${demographics.median_condo_market_value.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Median SFR Size:</span>
+                    <span className="font-medium">{demographics.median_sfr_living_area.toLocaleString()} sq ft</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Median Condo Size:</span>
+                    <span className="font-medium">{demographics.median_condo_living_area.toLocaleString()} sq ft</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Neighbor Sales Analysis */}
+      {neighborSales.length > 0 && (
+        <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" />
+              Comparative Market Analysis - Neighbor Sales
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="text-center p-4 rounded-lg bg-primary/10">
+                  <div className="text-2xl font-bold text-primary mb-1">
+                    ${(neighborSales.reduce((sum, sale) => sum + sale.sale_price, 0) / neighborSales.length).toLocaleString()}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Average Sale Price</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-secondary/10">
+                  <div className="text-2xl font-bold text-secondary mb-1">
+                    {neighborSales.length}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Recent Sales</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-accent/10">
+                  <div className="text-2xl font-bold text-accent mb-1">
+                    {Math.round(neighborSales.reduce((sum, sale) => sum + sale.heated_area, 0) / neighborSales.length).toLocaleString()}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Avg Size (sq ft)</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold">Recent Sales Details</h4>
+                {neighborSales.map((sale, index) => (
+                  <div key={index} className="p-4 rounded-lg bg-muted/20 border border-border/50">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <p className="font-medium">{sale.property_address}</p>
+                        <p className="text-sm text-muted-foreground">Neighbor ID: {sale.neighbor_id}</p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-primary">${sale.sale_price.toLocaleString()}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(sale.sale_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm">{sale.beds} bed, {sale.baths} bath</p>
+                        <p className="text-sm text-muted-foreground">{sale.heated_area.toLocaleString()} sq ft</p>
+                      </div>
+                      <div>
+                        <p className="text-sm">${(sale.sale_price / sale.heated_area).toFixed(0)}/sq ft</p>
+                        <p className="text-sm text-muted-foreground">{sale.deed_desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Action Items & Recommendations */}
+      <Card className="shadow-medium animate-fade-in hover-scale transition-smooth">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" />
+            Strategic Recommendations & Action Items
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {analytics.actionableRecommendations.map((recommendation, index) => (
+              <div key={index} className="flex items-start gap-3 p-4 rounded-lg bg-gradient-to-r from-secondary/5 to-primary/5 border border-secondary/20">
+                <div className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-sm font-bold text-secondary">{index + 1}</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">{recommendation}</p>
+                  <div className="mt-2 flex gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {index < 2 ? 'High Priority' : index < 4 ? 'Medium Priority' : 'Low Priority'}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {index % 3 === 0 ? 'Financial' : index % 3 === 1 ? 'Legal' : 'Operational'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Property Documents */}
+      <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Property Documents & Records
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingAssets ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+              <span className="ml-3 text-muted-foreground">Loading documents...</span>
+            </div>
+          ) : documents.length > 0 ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <div className="text-center p-3 rounded-lg bg-primary/10">
+                  <div className="text-2xl font-bold text-primary mb-1">{documents.length}</div>
+                  <p className="text-sm text-muted-foreground">Total Documents</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-secondary/10">
+                  <div className="text-2xl font-bold text-secondary mb-1">
+                    {documents.filter(doc => doc.doc_type === "Deed").length}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Legal Documents</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-accent/10">
+                  <div className="text-2xl font-bold text-accent mb-1">
+                    {documents.filter(doc => doc.doc_type === "Survey" || doc.doc_type === "Appraisal").length}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Technical Reports</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold">Document List</h4>
+                {documents.map((doc, index) => (
+                  <div key={index} className="p-4 rounded-lg bg-muted/20 border border-border/50">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <p className="font-medium">{doc.doc_type}</p>
+                        <p className="text-sm text-muted-foreground">#{doc.doc_number}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{new Date(doc.doc_date).toLocaleDateString()}</p>
+                        <p className="text-sm text-muted-foreground">Document Date</p>
+                      </div>
+                      <div>
+                        <p className="text-sm">{doc.description}</p>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <ExternalLink className="h-3 w-3" />
+                          View Document
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No documents available for this property</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Property Images Gallery */}
+      <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Image className="h-5 w-5 text-primary" />
+            Property Images & Visual Documentation
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingAssets ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+              <span className="ml-3 text-muted-foreground">Loading images...</span>
+            </div>
+          ) : images.length > 0 ? (
+            <div className="space-y-6">
+              <div className="text-center p-4 rounded-lg bg-primary/10">
+                <div className="text-2xl font-bold text-primary mb-1">{images.length}</div>
+                <p className="text-sm text-muted-foreground">Property Images Available</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {images.map((img, index) => (
+                  <div key={index} className="space-y-3">
+                    <div className="relative group rounded-lg overflow-hidden bg-muted/20 border border-border/50">
+                      <img 
+                        src={img.image_url} 
+                        alt={img.description}
+                        className="w-full h-48 object-cover transition-transform group-hover:scale-105"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "https://placeholder.com/400x300/e5e7eb/6b7280?text=Image+Not+Available";
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Button variant="secondary" size="sm" className="gap-2">
+                          <ExternalLink className="h-3 w-3" />
+                          View Full Size
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-medium text-sm">{img.description}</p>
+                      {img.description.toLowerCase().includes('floor plan') && (
+                        <Badge variant="outline" className="mt-1 text-xs">
+                          Floor Plan
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Floor Plan Highlight */}
+              {images.some(img => img.description.toLowerCase().includes('floor plan')) && (
+                <div className="p-6 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
+                  <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    Professional Floor Plan Available
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Detailed architectural floor plan showing room layouts, dimensions, and spatial relationships. 
+                    Perfect for understanding the property's flow and potential renovation opportunities.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Image className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No images available for this property</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            Data Summary & Report Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary mb-1">{taxRecords.length}</div>
+              <p className="text-sm text-muted-foreground">Tax Records</p>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-secondary mb-1">{neighborSales.length}</div>
+              <p className="text-sm text-muted-foreground">Neighbor Sales</p>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-accent mb-1">{taxIssues.length}</div>
+              <p className="text-sm text-muted-foreground">Tax Issues</p>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary mb-1">
+                {new Date().toLocaleDateString()}
+              </div>
+              <p className="text-sm text-muted-foreground">Report Generated</p>
+            </div>
+          </div>
+          
+          <Separator className="my-6" />
+          
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <h4 className="font-semibold">PropertyForge AI Complete Analysis</h4>
+              <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+                This comprehensive report was generated using PropertyForge AI advanced analytics engine, 
+                incorporating all available property data, market comparisons, and predictive modeling 
+                to provide actionable insights for real estate professionals.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center text-sm text-muted-foreground">
+              <div>
+                <strong>Data Sources:</strong> Public records, MLS data, demographic databases
+              </div>
+              <div>
+                <strong>Analysis Date:</strong> {new Date().toLocaleDateString()}
+              </div>
+              <div>
+                <strong>Report Version:</strong> 2.1.0
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};

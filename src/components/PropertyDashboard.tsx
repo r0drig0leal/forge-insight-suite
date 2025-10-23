@@ -245,10 +245,7 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
 
             {/* Risk Score Breakdown */}
             <RiskScoreBreakdown 
-              analytics={analytics}
-              climateRisk={undefined}
-              taxRecords={taxRecords}
-              demographics={demographics}
+              parcelId={parcelId}
             />
 
 

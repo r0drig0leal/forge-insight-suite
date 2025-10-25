@@ -64,6 +64,8 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
       } catch {
         setTotalRiskScore(null);
       }
+      //#teste
+
     };
     fetchTotalScore();
   }, [parcelId]);

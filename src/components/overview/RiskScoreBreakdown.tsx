@@ -7,6 +7,20 @@ import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { useEffect, useState } from "react";
 
 export const RiskScoreBreakdown = ({ parcelId }: { parcelId: string }) => {
+  type TotalRiskScore = {
+    parcel_id: string;
+    social_risk_score: number;
+    social_category: string;
+    climate_risk_score: number;
+    climate_category: string;
+    financial_risk_score: number;
+    financial_category: string;
+    total_risk_score: number;
+    risk_score: number;
+    overall_category: string;
+  } | null;
+
+  const [totalScore, setTotalScore] = useState<TotalRiskScore>(null);
   const [scores, setScores] = useState({
     financial: null,
     social: null,
@@ -14,6 +28,13 @@ export const RiskScoreBreakdown = ({ parcelId }: { parcelId: string }) => {
   });
 
   useEffect(() => {
+    const fetchTotalScore = async () => {
+      const res = await fetch(`/api/total_risk_score/${parcelId}`);
+      setTotalScore(res.ok ? (await res.json())[0] : null);
+    };
+    fetchTotalScore();
+
+    // Detalhes continuam sendo buscados para breakdowns detalhados
     const fetchScores = async () => {
       const [finRes, socRes, cliRes] = await Promise.all([
         fetch(`/api/financial_risk_score/${parcelId}`),
@@ -85,6 +106,21 @@ export const RiskScoreBreakdown = ({ parcelId }: { parcelId: string }) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Overall Risk Score from total_risk_score endpoint */}
+          {totalScore ? (
+            <div className="text-center p-6 rounded-lg bg-gradient-to-br from-background via-background to-muted/20">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <span className={`text-4xl font-bold ${getRiskColor(totalScore.total_risk_score)}`}>{totalScore.total_risk_score}</span>
+                <Badge variant="outline" className={`ml-2 ${getRiskBgColor(totalScore.total_risk_score)} ${getRiskColor(totalScore.total_risk_score)} border-current/20`}>
+                  {totalScore.overall_category}
+                </Badge>
+              </div>
+              <div className="text-muted-foreground text-sm">Overall Risk Score</div>
+            </div>
+          ) : (
+            <div className="text-muted-foreground text-sm">No overall score available.</div>
+          )}
+          {/* Risk Component Breakdown (details) */}
           <div className="space-y-4">
             <h4 className="text-sm font-medium text-muted-foreground">Risk Components</h4>
             {riskBreakdown.length === 0 ? (

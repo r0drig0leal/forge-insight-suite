@@ -61,43 +61,32 @@ export const PropertyInput = ({ onAnalyze, isLoading }: PropertyInputProps) => {
     setIsProcessingParcelId(true);
     setProcessingStatus("running");
     setAddressError(null);
-    // Get the full address string for API call
     const fullAddress = address.address_display || address.formattedAddress || address.address || '';
-    console.log('🔍 Selected address:', fullAddress);
-    // Extract address part before first comma (e.g., "15223 BOOK CLUB RD" from "15223 BOOK CLUB RD, WINTER GARDEN, 34787")
-    const addressBeforeComma = fullAddress.split(',')[0].trim();
-    console.log('🏠 Address before comma:', addressBeforeComma);
-    // Set the full address in input to show to user
     setParcelId(fullAddress);
     try {
-      // Step 1: Get parcel ID using only the address part before comma
-      console.log('📡 Step 1: Getting parcel ID for:', addressBeforeComma);
-      const parcelResponse = await apiClient.getParcelIdByAddress(addressBeforeComma);
+      // Agora sempre envia o endereço completo para o backend
+      const parcelResponse = await apiClient.getParcelIdByAddress(fullAddress);
       if (
         parcelResponse.success &&
         parcelResponse.data?.parcel_id &&
-        parcelResponse.data.parcel_id !== fullAddress &&
         /^[A-Za-z0-9\-_]+$/.test(parcelResponse.data.parcel_id) &&
-        parcelResponse.data.parcel_id.length < 50 // evita strings longas como endereço
+        parcelResponse.data.parcel_id.length < 50
       ) {
         const parcelId = parcelResponse.data.parcel_id;
-        console.log('✅ Got parcel ID:', parcelId, '- Background processing started');
         setCurrentParcelId(parcelId);
         setActualParcelId(parcelId);
-        setParcelId(fullAddress); // Keep showing full address to user
-        // Step 2: Start polling for status
-        console.log('🔄 Step 2: Starting status polling...');
+        // Poll usando o parcelId retornado do backend
         await pollForProcessingCompletion(parcelId);
       } else {
-        console.error('❌ Failed to get valid parcel ID:', parcelResponse.error, parcelResponse.data?.parcel_id);
         setProcessingStatus("failed");
-        setAddressError("Could not find a valid property for this address. Please try another address.");
+        setAddressError("No valid parcel ID found for this address. Please try another address.");
         setActualParcelId(null);
       }
     } catch (error) {
-      console.error('❌ Error processing address:', error);
+      let errorMsg = "Could not process this property. Please try another address.";
+      if (error instanceof Error) errorMsg = error.message;
       setProcessingStatus("failed");
-      setAddressError("Could not find a valid property for this address. Please try another address.");
+      setAddressError(errorMsg);
       setActualParcelId(null);
     } finally {
       setIsProcessingParcelId(false);
@@ -107,69 +96,46 @@ export const PropertyInput = ({ onAnalyze, isLoading }: PropertyInputProps) => {
   const pollForProcessingCompletion = async (parcelId: string) => {
     let attempts = 0;
     const maxAttempts = 60; // Max 60 attempts (2 minutes if polling every 2 seconds)
-    
+    let pollingTimedOut = false;
     while (attempts < maxAttempts) {
       console.log(`🔄 Polling attempt ${attempts + 1}/${maxAttempts} for parcel ID: ${parcelId}`);
-      
       try {
         const statusResponse = await apiClient.getParcelIdStatus(parcelId);
-        
         if (statusResponse.success && statusResponse.data) {
           const { status, message, progress, current_script, total_scripts, completed_at } = statusResponse.data;
-          
-          console.log('📊 Status:', status);
-          console.log('📝 Message:', message);
-          console.log('📈 Progress:', progress);
-          console.log('🔧 Current Script:', current_script);
-          console.log('📁 Total Scripts:', total_scripts);
-          
           setProcessingStatus(status);
-          
-          // Update detailed progress information
           if (progress !== undefined) setProcessingProgress(progress);
           if (current_script) setCurrentScript(current_script);
           if (total_scripts) setTotalScripts(total_scripts);
           if (message) setProcessingMessage(message);
-          
           if (status === "completed") {
-            console.log('✅ Data processing completed!', completed_at ? `at ${completed_at}` : '');
-            console.log('💾 Data is now available in database');
-            
-            // Auto-trigger analysis since data is ready in database
             setTimeout(() => {
-              console.log('🚀 Loading property dashboard from database...');
               onAnalyze(parcelId);
-            }, 1000); // Increase delay to 1 second to ensure DB is ready
+            }, 1000);
             return;
           } else if (status === "failed") {
-            console.log('❌ Data processing failed:', message);
             setProcessingStatus("failed");
+            setAddressError("Property data processing failed. Please try again or contact support.");
             return;
           } else if (status === "not_found") {
-            console.log('❌ Property data not found:', message);
             setProcessingStatus("not_found");
+            setAddressError("No property data found for this address. Please check the address and try again.");
             return;
           }
-          
-          // Status is still "running", continue polling
-          console.log(`⏳ Processing: ${current_script} (${progress}%)`);
         } else {
           console.log('⚠️ Status API call failed, retrying...');
         }
       } catch (error) {
         console.error('❌ Polling error:', error);
       }
-      
       attempts++;
-      
-      // Wait 2 seconds before next poll (longer interval since background processing can take time)
       if (attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
-    
-    console.log('⏰ Polling timeout - processing may still be running in background');
+    pollingTimedOut = true;
     setProcessingStatus("failed");
+    setAddressError("Property data processing is taking too long. Please try again later or contact support.");
   };
 
   return (

@@ -23,6 +23,10 @@ const Index = () => {
   }, []);
 
   const handleAnalyze = async (parcelId: string) => {
+  console.log('[DEBUG] handleAnalyze called with parcelId:', parcelId);
+  if (typeof window !== 'undefined') {
+    console.log('[DEBUG] PropertyDashboard mounted with parcelId:', parcelId);
+  }
     setIsLoading(true);
     setError(null);
     

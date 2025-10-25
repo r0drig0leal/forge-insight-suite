@@ -48,6 +48,25 @@ interface PropertyDashboardProps {
 
 
 export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDashboardProps) => {
+  // Estado para o total risk score
+  const [totalRiskScore, setTotalRiskScore] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchTotalScore = async () => {
+      try {
+        const res = await fetch(`/api/total_risk_score/${parcelId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setTotalRiskScore(data[0]?.total_risk_score ?? null);
+        } else {
+          setTotalRiskScore(null);
+        }
+      } catch {
+        setTotalRiskScore(null);
+      }
+    };
+    fetchTotalScore();
+  }, [parcelId]);
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -219,7 +238,7 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
               )}
               <AnimatedMetric
                 title="Risk Score"
-                value={analytics.overallRiskScore}
+                value={totalRiskScore !== null ? totalRiskScore : analytics.overallRiskScore}
                 format="number"
                 icon={AlertTriangle}
                 colorScheme="accent"

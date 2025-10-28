@@ -1,3 +1,22 @@
+// ROI Potential (centralizado para uso em hooks e integração)
+export interface PropertyRoiPotential {
+  parcel_id: string;
+  potential_rent_income: number;
+  estimated_renovation_cost: number;
+  estimated_eviction_cost: number;
+  market_value: number;
+  net_annual_income: number;
+  roi_potential_percent: number;
+  range_low: number;
+  range_high: number;
+  calculated_at: string;
+  num_comps: number;
+  market_position_score?: number; // percentual (ex: 7.5)
+  market_position?: string; // legacy string, fallback
+  market_position_vs_neighborhood_percent?: number;
+  market_position_vs_neighborhood_label?: string;
+  risk_category?: string;
+}
 // --- New Types for Additional Property Resources ---
 export interface PropertyBuildingFeature {
   parcel_id: string;
@@ -85,33 +104,36 @@ export interface PropertyService {
  */
 
 import { ENV_CONFIG, isDebugMode } from '@/lib/env';
+import { API_BASE_URL } from './apiConfig';
+import type { Request, Response } from 'express';
 
-// API Configuration
-export const API_CONFIG = {
-  BASE_URL: ENV_CONFIG.API.BASE_URL,
-  ENDPOINTS: {
-    ADDRESS_SEARCH: '/api/address',
-    PARCEL_ID_BY_ADDRESS: '/api/parcel-id-by-address',
-    PARCEL_ID_STATUS: '/api/parcel-id-status',
-    PROPERTY_LOCATION: '/api/property_location',
-    AUCTIONS: '/api/auctions',
-    PROPERTY_TAX_RECORDS: '/api/property_tax_records',
-    PROPERTY_BUILDINGS: '/api/property_buildings',
-    PROPERTY_FLOOD_RISK: '/api/property_flood_risk',
-    PROPERTY_SALES_RECORDS: '/api/property_sales_records',
-    PROPERTY_DEMOGRAPHICS: '/api/property_demographics',
-    PROPERTY_SCHOOLS: '/api/property_schools',
-    PROPERTY_DISASTERS_RISKS: '/api/property_disasters_risks',
-  },
-  HEADERS: {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Authorization': `Bearer ${ENV_CONFIG.API.AUTH.BEARER_TOKEN}`,
-    'x-api-key': ENV_CONFIG.API.AUTH.API_KEY,
-    'Accept': 'application/json',
-    'Accept-Charset': 'utf-8',
-  },
-  TIMEOUT: ENV_CONFIG.API.TIMEOUT,
+// API Endpoints (constantes)
+export const API_ENDPOINTS = {
+  ADDRESS_SEARCH: '/api/address',
+  PARCEL_ID_BY_ADDRESS: '/api/parcel-id-by-address',
+  PARCEL_ID_STATUS: '/api/parcel-id-status',
+  PROPERTY_LOCATION: '/api/property_location',
+  AUCTIONS: '/api/auctions',
+  PROPERTY_TAX_RECORDS: '/api/property_tax_records',
+  PROPERTY_BUILDINGS: '/api/property_buildings',
+  PROPERTY_FLOOD_RISK: '/api/property_flood_risk',
+  PROPERTY_SALES_RECORDS: '/api/property_sales_records',
+  PROPERTY_DEMOGRAPHICS: '/api/property_demographics',
+  PROPERTY_SCHOOLS: '/api/property_schools',
+  PROPERTY_DISASTERS_RISKS: '/api/property_disasters_risks',
 };
+
+// API Headers (constante)
+export const API_HEADERS = {
+  'Content-Type': 'application/json; charset=utf-8',
+  'Authorization': `Bearer ${ENV_CONFIG.API.AUTH.BEARER_TOKEN}`,
+  'x-api-key': ENV_CONFIG.API.AUTH.API_KEY,
+  'Accept': 'application/json',
+  'Accept-Charset': 'utf-8',
+};
+
+// API Timeout (constante)
+export const API_TIMEOUT = ENV_CONFIG.API.TIMEOUT;
 
 // Types
 export interface AddressSearchResult {
@@ -447,8 +469,8 @@ class ApiClient {
   private defaultHeaders: Record<string, string>;
 
   constructor() {
-    this.baseUrl = API_CONFIG.BASE_URL;
-    this.defaultHeaders = API_CONFIG.HEADERS;
+    this.baseUrl = API_BASE_URL;
+    this.defaultHeaders = API_HEADERS;
   }
 
   private async request<T>(
@@ -468,7 +490,7 @@ class ApiClient {
           ...this.defaultHeaders,
           ...options.headers,
         },
-        signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
+  signal: AbortSignal.timeout(API_TIMEOUT),
       });
 
       if (!response.ok) {
@@ -514,8 +536,8 @@ class ApiClient {
     const encodedQuery = encodeURIComponent(trimmedQuery);
     console.log('🔍 Encoded query:', encodedQuery);
     
-    const endpoint = `${API_CONFIG.ENDPOINTS.ADDRESS_SEARCH}?search=${encodedQuery}`;
-    console.log('🌐 Full endpoint URL:', `${API_CONFIG.BASE_URL}${endpoint}`);
+  const endpoint = `${API_ENDPOINTS.ADDRESS_SEARCH}?search=${encodedQuery}`;
+  console.log('🌐 Full endpoint URL:', `${API_BASE_URL}${endpoint}`);
     
     const response = await this.request<AddressSearchResponse>(endpoint);
     
@@ -550,8 +572,8 @@ class ApiClient {
     const trimmedAddress = address.trim();
     console.log('🏠 Sending address to backend (before comma):', trimmedAddress);
 
-    const endpoint = `${API_CONFIG.ENDPOINTS.PARCEL_ID_BY_ADDRESS}?address=${encodeURIComponent(trimmedAddress)}`;
-    console.log('🌐 Full URL:', `${API_CONFIG.BASE_URL}${endpoint}`);
+  const endpoint = `${API_ENDPOINTS.PARCEL_ID_BY_ADDRESS}?address=${encodeURIComponent(trimmedAddress)}`;
+  console.log('🌐 Full URL:', `${API_BASE_URL}${endpoint}`);
     
     try {
       const response = await this.request<ParcelIdResponse>(endpoint);
@@ -590,7 +612,7 @@ class ApiClient {
       };
     }
 
-    const endpoint = `${API_CONFIG.ENDPOINTS.PARCEL_ID_STATUS}?parcel_id=${encodeURIComponent(parcelId)}`;
+  const endpoint = `${API_ENDPOINTS.PARCEL_ID_STATUS}?parcel_id=${encodeURIComponent(parcelId)}`;
     
     try {
       console.log('🔄 Checking status for parcel ID:', parcelId);
@@ -925,60 +947,64 @@ class ApiClient {
   }
 
   // Endpoint agregado: calcula e retorna todos os dados da propriedade, incluindo current_market_value
-  async getPropertyDataApi(req: any, res: any) {
-    const parcelId = req.params.parcel_id;
-    try {
-      const result = await this.getPropertyData(parcelId);
-      if (result.success) {
-        return res.status(200).json(result.data);
-      } else {
-        return res.status(404).json({ error: result.error || 'Property not found' });
+    async getPropertyDataApi(req: Request<{ parcel_id: string }>, res: Response) {
+      // Express params are typed as { parcel_id: string }; coerce safely and trim
+      const parcelId = String(req.params.parcel_id || '').trim();
+      try {
+        const result = await this.getPropertyData(parcelId);
+        if (result.success) {
+          res.status(200);
+          return res.json(result.data);
+        } else {
+          res.status(404);
+          return res.json({ error: result.error || 'Property not found' });
+        }
+      } catch (error) {
+        res.status(500);
+        return res.json({ error: error instanceof Error ? error.message : 'Internal error' });
       }
-    } catch (error) {
-      return res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
     }
-  }
   async getPropertyLocation(parcelId: string): Promise<ApiResponse<PropertyLocation[]>> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.PROPERTY_LOCATION}/${encodeURIComponent(parcelId)}`;
-    console.log('🔍 DEBUG: getPropertyLocation endpoint:', endpoint);
-    console.log('🔍 DEBUG: Base URL:', API_CONFIG.BASE_URL);
-    console.log('🔍 DEBUG: Endpoint config:', API_CONFIG.ENDPOINTS.PROPERTY_LOCATION);
-    return this.request<PropertyLocation[]>(endpoint);
+  const endpoint = `${API_ENDPOINTS.PROPERTY_LOCATION}/${encodeURIComponent(parcelId)}`;
+  console.log('🔍 DEBUG: getPropertyLocation endpoint:', endpoint);
+  console.log('🔍 DEBUG: Base URL:', API_BASE_URL);
+  console.log('🔍 DEBUG: Endpoint config:', API_ENDPOINTS.PROPERTY_LOCATION);
+  return this.request<PropertyLocation[]>(endpoint);
   }
 
   async getPropertyTaxRecords(parcelId: string): Promise<ApiResponse<PropertyTaxRecord[]>> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.PROPERTY_TAX_RECORDS}/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyTaxRecord[]>(endpoint);
+  const endpoint = `${API_ENDPOINTS.PROPERTY_TAX_RECORDS}/${encodeURIComponent(parcelId)}`;
+  return this.request<PropertyTaxRecord[]>(endpoint);
   }
 
   async getPropertyBuildings(parcelId: string): Promise<ApiResponse<PropertyBuilding[]>> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.PROPERTY_BUILDINGS}/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyBuilding[]>(endpoint);
+  const endpoint = `${API_ENDPOINTS.PROPERTY_BUILDINGS}/${encodeURIComponent(parcelId)}`;
+  return this.request<PropertyBuilding[]>(endpoint);
   }
 
   async getPropertyFloodRisk(parcelId: string): Promise<ApiResponse<PropertyFloodRisk[]>> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.PROPERTY_FLOOD_RISK}/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyFloodRisk[]>(endpoint);
+  const endpoint = `${API_ENDPOINTS.PROPERTY_FLOOD_RISK}/${encodeURIComponent(parcelId)}`;
+  return this.request<PropertyFloodRisk[]>(endpoint);
   }
 
   async getPropertySalesRecords(parcelId: string): Promise<ApiResponse<PropertySalesRecord[]>> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.PROPERTY_SALES_RECORDS}/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertySalesRecord[]>(endpoint);
+  const endpoint = `${API_ENDPOINTS.PROPERTY_SALES_RECORDS}/${encodeURIComponent(parcelId)}`;
+  return this.request<PropertySalesRecord[]>(endpoint);
   }
 
   async getPropertyDemographics(parcelId: string): Promise<ApiResponse<PropertyDemographics[]>> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.PROPERTY_DEMOGRAPHICS}/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyDemographics[]>(endpoint);
+  const endpoint = `${API_ENDPOINTS.PROPERTY_DEMOGRAPHICS}/${encodeURIComponent(parcelId)}`;
+  return this.request<PropertyDemographics[]>(endpoint);
   }
 
   async getPropertySchools(parcelId: string): Promise<ApiResponse<PropertySchool[]>> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.PROPERTY_SCHOOLS}/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertySchool[]>(endpoint);
+  const endpoint = `${API_ENDPOINTS.PROPERTY_SCHOOLS}/${encodeURIComponent(parcelId)}`;
+  return this.request<PropertySchool[]>(endpoint);
   }
 
   async getPropertyDisasterRisks(parcelId: string): Promise<ApiResponse<PropertyDisasterRisk[]>> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.PROPERTY_DISASTERS_RISKS}/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyDisasterRisk[]>(endpoint);
+  const endpoint = `${API_ENDPOINTS.PROPERTY_DISASTERS_RISKS}/${encodeURIComponent(parcelId)}`;
+  return this.request<PropertyDisasterRisk[]>(endpoint);
   }
 }
 

@@ -8,7 +8,7 @@
 export const ENV_CONFIG = {
   // API Configuration
   API: {
-    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.105:3000',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://api.propertyforgeai.com:3000',
     TIMEOUT: parseInt(import.meta.env.VITE_API_TIMEOUT || '5000'),
     
     // Authentication
@@ -48,7 +48,6 @@ export const isDebugMode = () => ENV_CONFIG.FEATURES.DEBUG_MODE;
 // Validation helper
 export const validateEnvironment = () => {
   const required = [
-    { key: 'API_BASE_URL', value: ENV_CONFIG.API.BASE_URL },
     { key: 'API_BEARER_TOKEN', value: ENV_CONFIG.API.AUTH.BEARER_TOKEN },
     { key: 'API_KEY', value: ENV_CONFIG.API.AUTH.API_KEY },
   ];

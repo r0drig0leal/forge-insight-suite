@@ -35,6 +35,12 @@ import { TrendSparklines } from "./overview/TrendSparklines";
 import { AIConfidenceScore } from "./overview/AIConfidenceScore";
 import { GamificationProgress } from "./overview/GamificationProgress";
 
+import { getPropertyRoiPotential } from '@/lib/roi';
+import { API_BASE_URL } from "@/lib/apiConfig";
+import { getPropertyValuation } from '@/lib/valuation';
+import type { PropertyValuation } from '@/lib/valuation';
+import type { PropertyRoiPotential } from '@/lib/api';
+
 
 // Componente principal
 
@@ -54,7 +60,7 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
   useEffect(() => {
     const fetchTotalScore = async () => {
       try {
-        const res = await fetch(`/api/total_risk_score/${parcelId}`);
+  const res = await fetch(`${API_BASE_URL}/api/total_risk_score/${parcelId}`);
         if (res.ok) {
           const data = await res.json();
           setTotalRiskScore(data[0]?.total_risk_score ?? null);
@@ -93,41 +99,43 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
     console.log('[DEBUG] neighborSales:', neighborSales);
   }
 
-  // Novo: buscar valuation do backend
-  const [valuation, setValuation] = useState(null);
-  const [valuationError, setValuationError] = useState(null);
+
+  // Novo: buscar ROI Potential e Market Position do backend
+  const [roiData, setRoiData] = useState<PropertyRoiPotential | null>(null);
+  const [roiError, setRoiError] = useState<string | null>(null);
+  const [valuation, setValuation] = useState<PropertyValuation | null>(null);
+  const [valuationError, setValuationError] = useState<string | null>(null);
+
   useEffect(() => {
-    const fetchValuation = async () => {
+    const fetchRoi = async () => {
       try {
-        const res = await fetch(`/api/property_valuation/${property.parcel_id}`);
-        if (res.status === 200) {
-          const data = await res.json();
-          if (typeof window !== 'undefined') {
-            console.log('[VAL_DEBUG] GET /api/property_valuation:', data);
-          }
-          setValuation(data);
-        } else if (res.status === 404) {
-          if (typeof window !== 'undefined') {
-            console.log('[VAL_DEBUG] GET /api/property_valuation: 404 - Valuation not found');
-          }
-          setValuation(null);
-          setValuationError('Valuation not found');
+        const resp = await getPropertyRoiPotential(property.parcel_id);
+        if (resp.success && resp.data) {
+          setRoiData(resp.data);
         } else {
-          const err = await res.json();
-          if (typeof window !== 'undefined') {
-            console.log('[VAL_DEBUG] GET /api/property_valuation: error', err);
-          }
-          setValuation(null);
-          setValuationError(err.error || 'Unknown error');
+          setRoiData(null);
+          setRoiError(resp.error || 'Erro ao buscar ROI Potential');
         }
       } catch (e) {
-        if (typeof window !== 'undefined') {
-          console.log('[VAL_DEBUG] GET /api/property_valuation: exception', e);
-        }
-        setValuation(null);
-        setValuationError('Erro ao buscar valuation');
+        setRoiData(null);
+        setRoiError('Erro ao buscar ROI Potential');
       }
     };
+    const fetchValuation = async () => {
+      try {
+        const resp = await getPropertyValuation(property.parcel_id);
+        if (resp.success && resp.data) {
+          setValuation(resp.data);
+        } else {
+          setValuation(null);
+          setValuationError(resp.error || 'Erro ao buscar Property Valuation');
+        }
+      } catch (e) {
+        setValuation(null);
+        setValuationError('Erro ao buscar Property Valuation');
+      }
+    };
+    fetchRoi();
     fetchValuation();
   }, [property.parcel_id]);
 
@@ -227,27 +235,33 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
             >
               <AnimatedMetric
                 title="Market Value"
-                value={valuation?.range_low ?? 0}
+                value={valuation?.market_value ?? 0}
                 format="currency"
                 icon={DollarSign}
                 colorScheme="primary"
                 animationDelay={0.1}
               />
-              {/* Removido Range da tela conforme solicitado */}
               {valuationError && (
                 <div className="text-xs text-red-500 mt-1">{valuationError}</div>
               )}
               <AnimatedMetric
-                title="Risk Score"
+                title="Overall Risk Score"
                 value={totalRiskScore !== null ? totalRiskScore : analytics.overallRiskScore}
-                format="number"
+                format="percentage"
                 icon={AlertTriangle}
                 colorScheme="accent"
                 animationDelay={0.2}
+                subtitle={
+                  roiData?.risk_category && typeof roiData.risk_category === 'string'
+                    ? (roiData.risk_category.toLowerCase().includes('overprice') || roiData.risk_category.toLowerCase().includes('overpriced')
+                        ? undefined
+                        : roiData.risk_category)
+                    : undefined
+                }
               />
               <AnimatedMetric
                 title="ROI Potential"
-                value={analytics.potentialROI}
+                value={roiData?.roi_potential_percent ?? 0}
                 format="percentage"
                 icon={TrendingUp}
                 colorScheme="secondary"
@@ -255,11 +269,12 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
               />
               <AnimatedMetric
                 title="Market Position"
-                value={analytics.neighborBenchmark}
+                value={typeof roiData?.market_position_score === 'number' ? roiData.market_position_score : 0}
                 format="percentage"
                 icon={Home}
                 colorScheme="primary"
                 animationDelay={0.4}
+                subtitle={undefined}
               />
             </motion.div>
 
@@ -270,11 +285,13 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
 
 
             {/* Regional Comparatives */}
-            <RegionalComparatives 
-              analytics={analytics}
-              property={property}
-              demographics={demographics}
-            />
+            {roiData && (
+              <RegionalComparatives 
+                roiPotential={roiData}
+                property={property}
+                demographics={demographics}
+              />
+            )}
 
             {/* Temporal Trends */}
             <TrendSparklines 

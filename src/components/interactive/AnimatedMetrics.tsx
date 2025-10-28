@@ -13,6 +13,7 @@ interface AnimatedMetricProps {
   colorScheme: "primary" | "secondary" | "accent" | "destructive";
   format?: "currency" | "percentage" | "number";
   animationDelay?: number;
+  subtitle?: string;
 }
 
 export const AnimatedMetric = ({
@@ -23,7 +24,8 @@ export const AnimatedMetric = ({
   icon: Icon,
   colorScheme,
   format = "number",
-  animationDelay = 0
+  animationDelay = 0,
+  subtitle
 }: AnimatedMetricProps) => {
   const [displayValue, setDisplayValue] = useState(0);
   const [hasAnimated, setHasAnimated] = useState(false);
@@ -145,16 +147,23 @@ export const AnimatedMetric = ({
         </CardHeader>
         
         <CardContent>
-          <motion.div 
-            className={`text-3xl font-bold text-${colorScheme} mb-1`}
-            key={displayValue}
-            initial={{ scale: 1.1 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.2 }}
-          >
-            {formatValue(displayValue)}{unit}
-          </motion.div>
-          
+          <div className="flex flex-col items-start justify-center w-full" style={{ minWidth: 0 }}>
+            <motion.div 
+              className={`text-3xl font-bold text-${colorScheme} mb-1 w-full text-left`}
+              key={displayValue}
+              initial={{ scale: 1.1 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.2 }}
+              style={{ minWidth: 0 }}
+            >
+              {formatValue(displayValue)}{unit}
+            </motion.div>
+            {subtitle && (
+              <span className="text-xs text-muted-foreground -mt-1 w-full text-left block truncate" style={{ minWidth: 0 }}>
+                {subtitle}
+              </span>
+            )}
+          </div>
           {/* Pulse Animation for Important Metrics */}
           {(colorScheme === "primary" || colorScheme === "secondary") && hasAnimated && (
             <motion.div

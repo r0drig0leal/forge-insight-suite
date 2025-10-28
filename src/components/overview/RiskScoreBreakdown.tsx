@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
+import { API_BASE_URL } from "@/lib/apiConfig";
 import { useEffect, useState } from "react";
 
 export const RiskScoreBreakdown = ({ parcelId }: { parcelId: string }) => {
@@ -29,7 +30,7 @@ export const RiskScoreBreakdown = ({ parcelId }: { parcelId: string }) => {
 
   useEffect(() => {
     const fetchTotalScore = async () => {
-      const res = await fetch(`/api/total_risk_score/${parcelId}`);
+  const res = await fetch(`${API_BASE_URL}/api/total_risk_score/${parcelId}`);
       setTotalScore(res.ok ? (await res.json())[0] : null);
     };
     fetchTotalScore();
@@ -37,9 +38,9 @@ export const RiskScoreBreakdown = ({ parcelId }: { parcelId: string }) => {
     // Detalhes continuam sendo buscados para breakdowns detalhados
     const fetchScores = async () => {
       const [finRes, socRes, cliRes] = await Promise.all([
-        fetch(`/api/financial_risk_score/${parcelId}`),
-        fetch(`/api/social_risk_score/${parcelId}`),
-        fetch(`/api/climate_risk_score/${parcelId}`)
+  fetch(`${API_BASE_URL}/api/financial_risk_score/${parcelId}`),
+  fetch(`${API_BASE_URL}/api/social_risk_score/${parcelId}`),
+  fetch(`${API_BASE_URL}/api/climate_risk_score/${parcelId}`)
       ]);
       setScores({
         financial: finRes.ok ? (await finRes.json())[0] : null,
@@ -68,29 +69,39 @@ export const RiskScoreBreakdown = ({ parcelId }: { parcelId: string }) => {
     return "High risk";
   };
 
+  // Helper to parse score as number (handles string or number)
+  const parseScore = (val: unknown) => {
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val))) return Number(val);
+    return 0.0;
+  };
+
   const riskBreakdown = [
-    scores.financial && {
+    {
       category: "Financial",
-      score: scores.financial.financial_risk_score,
+      score: totalScore ? parseScore(totalScore.financial_risk_score) : 0.0,
+      label: totalScore ? totalScore.financial_category : '',
       icon: DollarSign,
       description: "Tax burden, exemptions, delinquency, and valuation stability",
       color: "primary"
     },
-    scores.social && {
+    {
       category: "Social",
-      score: scores.social.social_risk_score,
+      score: totalScore ? parseScore(totalScore.social_risk_score) : 0.0,
+      label: totalScore ? totalScore.social_category : '',
       icon: Users,
       description: "Income, crime, poverty, education, unemployment, density, diversity, community",
       color: "secondary"
     },
-    scores.climate && {
+    {
       category: "Climate",
-      score: scores.climate.climate_risk_score,
+      score: totalScore ? parseScore(totalScore.climate_risk_score) : 0.0,
+      label: totalScore ? totalScore.climate_category : '',
       icon: CloudLightning,
       description: "Flood, hurricane, fire, tornado, heat, hail, lightning risks",
       color: "accent"
     }
-  ].filter(Boolean);
+  ];
 
   return (
     <motion.div
@@ -102,7 +113,7 @@ export const RiskScoreBreakdown = ({ parcelId }: { parcelId: string }) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
-            Risk Score Analysis
+            <span className="text-muted-foreground">Risk Score Analysis</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -110,7 +121,14 @@ export const RiskScoreBreakdown = ({ parcelId }: { parcelId: string }) => {
           {totalScore ? (
             <div className="text-center p-6 rounded-lg bg-gradient-to-br from-background via-background to-muted/20">
               <div className="flex items-center justify-center gap-3 mb-3">
-                <span className={`text-4xl font-bold ${getRiskColor(totalScore.total_risk_score)}`}>{totalScore.total_risk_score}</span>
+                <span className={`text-4xl font-bold ${getRiskColor(totalScore.total_risk_score)}`}>
+                  <AnimatedCounter 
+                    value={totalScore.total_risk_score}
+                    duration={1.5}
+                    delay={0.5}
+                    decimals={1}
+                  />%
+                </span>
                 <Badge variant="outline" className={`ml-2 ${getRiskBgColor(totalScore.total_risk_score)} ${getRiskColor(totalScore.total_risk_score)} border-current/20`}>
                   {totalScore.overall_category}
                 </Badge>
@@ -144,16 +162,17 @@ export const RiskScoreBreakdown = ({ parcelId }: { parcelId: string }) => {
                       <div className="flex items-center gap-2">
                         <span className={`font-bold ${getRiskColor(risk.score)}`}> 
                           <AnimatedCounter 
-                            value={risk.score} 
+                            value={typeof risk.score === 'number' && !isNaN(risk.score) ? risk.score : 0} 
                             duration={1.5}
                             delay={0.7 + index * 0.1}
-                          />
+                            decimals={1}
+                          />%
                         </span>
                         <Badge 
                           variant="outline" 
                           className={`text-xs ${getRiskBgColor(risk.score)} ${getRiskColor(risk.score)} border-current/20`}
                         >
-                          {getRiskLabel(risk.score)}
+                          {risk.label}
                         </Badge>
                       </div>
                     </div>

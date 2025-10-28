@@ -3,32 +3,18 @@ import { TrendingUp, TrendingDown, Target, Award, MapPin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
-import { PropertyAnalytics, PropertyData, Demographics } from "@/lib/mockData";
+import type { PropertyData, Demographics } from "@/lib/mockData";
+import type { PropertyRoiPotential } from '@/lib/api';
 
 interface RegionalComparativesProps {
-  analytics: PropertyAnalytics;
+  roiPotential: PropertyRoiPotential;
   property: PropertyData;
   demographics: Demographics | null;
 }
 
-export const RegionalComparatives = ({ analytics, property, demographics }: RegionalComparativesProps) => {
-  const getMarketPositionText = (benchmark: number) => {
-    const absBenchmark = Math.abs(benchmark);
-    
-    if (benchmark > 15) {
-      return `Top 10% most expensive in the region`;
-    } else if (benchmark > 5) {
-      return `${benchmark.toFixed(1)}% above neighborhood median`;
-    } else if (benchmark > 0) {
-      return `Slightly above market average (+${benchmark.toFixed(1)}%)`;
-    } else if (benchmark > -5) {
-      return `Near market average (${benchmark.toFixed(1)}%)`;
-    } else if (benchmark > -15) {
-      return `${absBenchmark.toFixed(1)}% below neighborhood median`;
-    } else {
-      return `Top 10% most affordable in the region`;
-    }
-  };
+export const RegionalComparatives = ({ roiPotential, property, demographics }: RegionalComparativesProps) => {
+
+  // Usa os campos do backend diretamente
 
   const getROIBenchmarkText = (roi: number) => {
     const avgROI = 6.2; // Market average
@@ -52,8 +38,8 @@ export const RegionalComparatives = ({ analytics, property, demographics }: Regi
   };
 
   const getPositionColor = (benchmark: number) => {
-    if (benchmark > 5) return "text-destructive";
-    if (benchmark < -5) return "text-secondary";
+    if (benchmark > 0) return "text-green-600";
+    if (benchmark < 0) return "text-destructive";
     return "text-primary";
   };
 
@@ -69,8 +55,8 @@ export const RegionalComparatives = ({ analytics, property, demographics }: Regi
     return "text-primary";
   };
 
-  const MarketPositionIcon = getPositionIcon(analytics.neighborBenchmark);
-  const ROIIcon = getROIIcon(analytics.potentialROI);
+  const MarketPositionIcon = getPositionIcon(Number(roiPotential.market_position_score ?? 0));
+  const ROIIcon = getROIIcon(Number(roiPotential.roi_potential_percent ?? 0));
 
   return (
     <motion.div
@@ -95,17 +81,17 @@ export const RegionalComparatives = ({ analytics, property, demographics }: Regi
             className="space-y-4"
           >
             <div className="flex items-center gap-3">
-              <MarketPositionIcon className={`h-6 w-6 ${getPositionColor(analytics.neighborBenchmark)}`} />
+              <MarketPositionIcon className={`h-6 w-6 ${getPositionColor(Number(roiPotential.market_position_score ?? 0))}`} />
               <div>
-                <div className={`text-2xl font-bold ${getPositionColor(analytics.neighborBenchmark)}`}>
-                  {analytics.neighborBenchmark > 0 ? '+' : ''}
+                <div className={`text-2xl font-bold ${getPositionColor(Number(roiPotential.market_position_score ?? 0))}`}>
+                  {Number(roiPotential.market_position_score ?? 0) > 0 ? '+' : ''}
                   <AnimatedCounter 
-                    value={analytics.neighborBenchmark} 
+                    value={Number(roiPotential.market_position_score ?? 0)}
                     duration={1.5}
                     delay={0.6}
                   />%
                 </div>
-                <p className="text-xs text-muted-foreground">vs. Neighborhood</p>
+                <p className="text-xs text-muted-foreground">Market Position</p>
               </div>
             </div>
             
@@ -115,9 +101,12 @@ export const RegionalComparatives = ({ analytics, property, demographics }: Regi
               transition={{ delay: 0.8, duration: 0.4 }}
               className="p-3 rounded-lg bg-muted/30"
             >
-              <p className="text-sm font-medium text-foreground">
-                👉 {getMarketPositionText(analytics.neighborBenchmark)}
-              </p>
+              <Badge 
+                variant="outline" 
+                className={`text-sm font-medium ml-1 ${getPositionColor(Number(roiPotential.market_position_score ?? 0))} bg-muted/40 border-current/20`}
+              >
+                👉 {roiPotential.market_position}
+              </Badge>
             </motion.div>
 
             {demographics && (
@@ -150,11 +139,11 @@ export const RegionalComparatives = ({ analytics, property, demographics }: Regi
             className="space-y-4"
           >
             <div className="flex items-center gap-3">
-              <ROIIcon className={`h-6 w-6 ${getROIColor(analytics.potentialROI)}`} />
+              <ROIIcon className={`h-6 w-6 ${getROIColor(Number(roiPotential.roi_potential_percent ?? 0))}`} />
               <div>
-                <div className={`text-2xl font-bold ${getROIColor(analytics.potentialROI)}`}>
+                <div className={`text-2xl font-bold ${getROIColor(Number(roiPotential.roi_potential_percent ?? 0))}`}>
                   <AnimatedCounter 
-                    value={analytics.potentialROI} 
+                    value={Number(roiPotential.roi_potential_percent ?? 0)}
                     duration={1.5}
                     delay={0.7}
                   />%
@@ -170,7 +159,7 @@ export const RegionalComparatives = ({ analytics, property, demographics }: Regi
               className="p-3 rounded-lg bg-muted/30"
             >
               <p className="text-sm font-medium text-foreground">
-                📊 {getROIBenchmarkText(analytics.potentialROI)}
+                📊 {getROIBenchmarkText(Number(roiPotential.roi_potential_percent ?? 0))}
               </p>
             </motion.div>
 

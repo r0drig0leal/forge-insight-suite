@@ -62,9 +62,15 @@ export const PropertyInput = ({ onAnalyze, isLoading }: PropertyInputProps) => {
     setProcessingStatus("running");
     setAddressError(null);
     const fullAddress = address.address_display || address.formattedAddress || address.address || '';
+    // Log detalhado para comparação
+    console.log('[DEBUG] Endereço selecionado no autocomplete:', fullAddress);
+    console.log('[DEBUG] address.address_display:', address.address_display);
+    console.log('[DEBUG] address.formattedAddress:', address.formattedAddress);
+    console.log('[DEBUG] address.address:', address.address);
     setParcelId(fullAddress);
     try {
-      // Agora sempre envia o endereço completo para o backend
+      // Log do valor realmente enviado para o backend
+      console.log('[DEBUG] Enviando para /api/parcel-id-by-address (valor exato):', fullAddress);
       const parcelResponse = await apiClient.getParcelIdByAddress(fullAddress);
       if (
         parcelResponse.success &&

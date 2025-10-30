@@ -247,8 +247,15 @@ export const CompleteReport = ({
   // const marketValue = property.current_market_value; // Atualizado para usar o valor correto do endpoint
 
   // Atualizar cálculos dependentes
-  const valueDifference = currentMarketValue! - lastValidTax.assessed_value;
-  const assessmentRatio = ((lastValidTax.assessed_value / currentMarketValue!) * 100).toFixed(1);
+  const valueDifference =
+    property.current_market_value && lastValidTax.assessed_value
+      ? property.current_market_value - lastValidTax.assessed_value
+      : 0;
+
+  const assessmentRatio =
+    property.current_market_value && lastValidTax.assessed_value && property.current_market_value > 0
+      ? ((lastValidTax.assessed_value / property.current_market_value) * 100).toFixed(1)
+      : '0.0';
 
   // Garantir que lastValidTax e market_value sejam válidos
   const validMarketValue = lastValidTax && lastValidTax.market_value > 0 ? lastValidTax.market_value : 0;
@@ -276,6 +283,14 @@ export const CompleteReport = ({
 
   const potentialAnnualRent = monthlyRentEst * 12;
   console.log("Calculated Potential Annual Rent:", potentialAnnualRent);
+
+  if (currentMarketValue && lastValidTax.assessed_value) {
+    console.log(`Market Value: ${currentMarketValue}`);
+    console.log(`Assessed Value: ${lastValidTax.assessed_value}`);
+    console.log(`Value Difference Calculation: ${currentMarketValue} - ${lastValidTax.assessed_value} = ${valueDifference}`);
+  } else {
+    console.log('Invalid values for Market Value or Assessed Value.');
+  }
 
   return (
     <motion.div 

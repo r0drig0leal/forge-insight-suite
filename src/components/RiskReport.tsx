@@ -202,50 +202,8 @@ export const RiskReport = ({ property, taxRecords, taxIssues, demographics, anal
             </div>
 
             {/* Risk Breakdown or Selected Risk Indices */}
-              <div className="space-y-3 flex-1 min-w-0">
-                  <div>
-                    <h4 className="font-semibold text-muted-foreground capitalize m-0">{selectedRisk} risk indices</h4>
-                    <div>
-                      {selectedRisk === 'financial' && (
-                        <div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Total annual property taxes: $8,043.06</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Market value: $495,710.00</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Assessed value: $438,552.00</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Homestead exemption: No</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Tax savings: $554.00</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Delinquent balance: $0</div>
-                        </div>
-                      )}
-                      {selectedRisk === 'social' && (
-                        <div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Income risk: 50%</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Crime risk: 17.5%</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Poverty risk: 1.01%</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Inequality risk: 45%</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Education risk: 65%</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Unemployment risk: 0.27%</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />School quality risk: 20%</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Population density risk: 12.89%</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Diversity index: 33%</div>
-                        </div>
-                      )}
-                      {selectedRisk === 'climate' && (
-                        <div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Flood risk: Low (Minimal hazard)</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Hurricane risk: High (High impact in FL coastal areas)</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Fire risk: High (Medium risk in dry areas)</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Tornado risk: High (Low in FL but possible)</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Heat risk: Low</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Hail risk: High</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Lightning risk: High</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                    <Progress value={riskScores?.climate_risk_score ?? 0} className="h-1" />
-                  </div>
-              ) : (
-                <div>
+              {selectedRisk && (
+                <div className="space-y-3 flex-1 min-w-0">
                   <h4 className="font-semibold text-muted-foreground capitalize m-0">{selectedRisk} risk indices</h4>
                   {selectedRisk === 'financial' && (
                     <div>
@@ -281,8 +239,8 @@ export const RiskReport = ({ property, taxRecords, taxIssues, demographics, anal
                       <div className="text-xs text-muted-foreground flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-muted-foreground" />Lightning risk: High</div>
                     </div>
                   )}
-
-      </div>
+                </div>
+              )}
           </div>
         </CardContent>
       </Card>

@@ -18,20 +18,22 @@ export async function getPropertyRoiPotential(parcelId: string): Promise<ApiResp
     // Mapear campos do backend para o padrão esperado no dashboard
     const data: PropertyRoiPotential = {
       parcel_id: raw.parcel_id,
-      potential_rent_income: Number(raw.potential_rent_income),
+      // Novo campo da API
+      potential_rent_income: raw.annual_rent_income !== undefined ? Number(raw.annual_rent_income) : (raw.potential_rent_income !== undefined ? Number(raw.potential_rent_income) : undefined),
       estimated_renovation_cost: Number(raw.estimated_renovation_cost),
       estimated_eviction_cost: Number(raw.estimated_eviction_cost),
       market_value: Number(raw.market_value),
       net_annual_income: Number(raw.net_annual_income),
-  roi_potential_percent: raw.roi_potential_percent !== undefined ? Number(raw.roi_potential_percent) : (raw.roi_percent !== undefined ? Number(raw.roi_percent) : undefined),
+      // Novo campo de ROI
+      roi_potential_percent: raw.roi_percent !== undefined ? Number(raw.roi_percent) : (raw.roi_potential_percent !== undefined ? Number(raw.roi_potential_percent) : undefined),
       range_low: Number(raw.range_low),
       range_high: Number(raw.range_high),
       calculated_at: raw.calculated_at,
       num_comps: Number(raw.num_comps),
-    market_position_score: raw.market_position_percent !== undefined ? parseFloat(raw.market_position_percent) : undefined,
-    market_position: raw.market_position_category || undefined,
-    market_position_vs_neighborhood_percent: raw.market_position_vs_neighborhood_percent !== undefined ? parseFloat(raw.market_position_vs_neighborhood_percent) : undefined,
-    market_position_vs_neighborhood_label: raw.market_position_vs_neighborhood_label || undefined,
+      market_position_score: raw.market_position_percent !== undefined ? parseFloat(raw.market_position_percent) : undefined,
+      market_position: raw.market_position_category || undefined,
+      market_position_vs_neighborhood_percent: raw.market_position_vs_neighborhood_percent !== undefined ? parseFloat(raw.market_position_vs_neighborhood_percent) : undefined,
+      market_position_vs_neighborhood_label: raw.market_position_vs_neighborhood_label || undefined,
     };
     return { success: true, data };
   } catch (error) {

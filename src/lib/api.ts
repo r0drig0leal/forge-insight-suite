@@ -231,13 +231,23 @@ export interface PropertyTaxRecord {
   tax_year: number;
   market_percent?: number;
   assessed_percent?: number;
+  show_flag?: boolean;
   land_value?: number;
   building_value?: number;
   features_value?: number;
   market_value?: number;
+  valuation_method?: string;
   assessed_value?: number;
   is_certified?: boolean;
-  is_homestead?: string;
+  is_homestead?: boolean | string;
+  is_ag?: boolean | string;
+  original_hx?: number;
+  additional_hx?: number;
+  other_exemptions?: number;
+  lis?: number;
+  soh_cap?: number;
+  tax_savings?: number;
+  has_benefits?: boolean;
 }
 
 export interface PropertyBuilding {
@@ -695,7 +705,7 @@ class ApiClient {
           return 0;
         }
         console.log('[DEBUG] Raw property data:', obj);
-        return {
+  return {
           parcel_id: typeof obj.parcel_id === 'string' ? obj.parcel_id : fallbackParcelId,
           parcel_id2: typeof obj.parcel_id2 === 'string' ? obj.parcel_id2 : '',
           parcel_url: typeof obj.parcel_url === 'string' ? obj.parcel_url : '',
@@ -706,6 +716,10 @@ class ApiClient {
           show_flag: typeof obj.show_flag === 'boolean' ? obj.show_flag : true,
           owner_name: typeof obj.owner_name === 'string' ? obj.owner_name : '',
           property_address: typeof obj.property_address === 'string' ? obj.property_address : '',
+          mail_address: typeof obj.mail_address === 'string' ? obj.mail_address : '',
+          mail_city: typeof obj.mail_city === 'string' ? obj.mail_city : '',
+          mail_state: typeof obj.mail_state === 'string' ? obj.mail_state : '',
+          mail_zip: typeof obj.mail_zip === 'string' ? obj.mail_zip : (typeof obj.mail_zip === 'number' ? String(obj.mail_zip) : ''),
           country: typeof obj.country === 'string' ? obj.country : '',
           property_city: typeof obj.property_city === 'string' ? obj.property_city : '',
           property_state: typeof obj.property_state === 'string' ? obj.property_state : '',
@@ -714,6 +728,7 @@ class ApiClient {
           dor_description: typeof obj.dor_description === 'string' ? obj.dor_description : '',
           street_number: typeof obj.street_number === 'number' ? String(obj.street_number) : (typeof obj.street_number === 'string' ? obj.street_number : ''),
           street_name: typeof obj.street_name === 'string' ? obj.street_name : '',
+          inst_num: typeof obj.inst_num === 'string' ? obj.inst_num : '',
           acreage: typeof obj.acreage === 'number' ? obj.acreage : 0,
           // Não existe sqft no banco, usar apenas heated_area
           sqft: safeNumber(obj.heated_area),
@@ -742,7 +757,32 @@ class ApiClient {
       const schools: import("./mockData").School[] = [];
       // Defensive: only map if data exists
       if (taxRecordsResp.success && Array.isArray(taxRecordsResp.data)) {
-        // TODO: map each tax record to full TaxRecord if needed
+        // Mapear cada tax record da API para o formato esperado pelo frontend
+        for (const tr of taxRecordsResp.data) {
+          taxRecords.push({
+            parcel_id: tr.parcel_id,
+            tax_year: tr.tax_year,
+            market_percent: tr.market_percent ?? 0,
+            assessed_percent: tr.assessed_percent ?? 0,
+            show_flag: tr.show_flag === undefined ? true : tr.show_flag,
+            land_value: tr.land_value ?? 0,
+            building_value: tr.building_value ?? 0,
+            features_value: tr.features_value ?? 0,
+            market_value: tr.market_value ?? 0,
+            valuation_method: tr.valuation_method ?? '',
+            assessed_value: tr.assessed_value ?? 0,
+            is_certified: tr.is_certified ?? false,
+            is_homestead: tr.is_homestead === true || tr.is_homestead === 'true',
+            is_ag: tr.is_ag === true || tr.is_ag === 'true',
+            original_hx: tr.original_hx ?? 0,
+            additional_hx: tr.additional_hx ?? 0,
+            other_exemptions: tr.other_exemptions ?? 0,
+            lis: tr.lis ?? 0,
+            soh_cap: tr.soh_cap ?? 0,
+            tax_savings: tr.tax_savings ?? 0,
+            has_benefits: tr.has_benefits ?? false,
+          });
+        }
       }
       if (buildingsResp.success && Array.isArray(buildingsResp.data)) {
         // Conversor explícito PropertyBuilding -> Building
@@ -757,9 +797,13 @@ class ApiClient {
             desc_bldg: b.desc_bldg ?? '',
             bldg_value: b.bldg_value ?? 0,
             est_new_cost: 0, // Não existe em PropertyBuilding
-            date_built: b.date_built ? Number(b.date_built) : 0,
+            date_built: b.date_built
+              ? (typeof b.date_built === 'string' && b.date_built.length >= 4
+                  ? parseInt(b.date_built.substring(0, 4))
+                  : (typeof b.date_built === 'number' ? b.date_built : 0))
+              : 0,
             beds: b.beds ?? 0,
-            baths: b.baths ?? 0,
+            baths: typeof b.baths === 'string' ? parseFloat(b.baths) : (typeof b.baths === 'number' ? b.baths : 0),
             floors: b.floors ?? 0,
             gross_area: b.gross_area ?? 0,
             living_area: b.living_area ?? 0,

@@ -44,19 +44,41 @@ interface CompleteReportProps {
   analytics: PropertyAnalytics;
 }
 
-export const CompleteReport = ({ 
-  property, 
-  taxRecords, 
-  taxIssues, 
-  neighborSales, 
-  demographics, 
-  building, 
-  analytics 
+// Define the expected type for fairMarketRent
+interface FairMarketRent {
+  efficiency?: number;
+  one_bedroom?: number;
+  two_bedroom?: number;
+  three_bedroom?: number;
+  four_bedroom?: number;
+}
+
+// Simulate fetching fairMarketRent data (replace with actual API call if needed)
+const fairMarketRent: FairMarketRent | null = {
+  efficiency: 1.9,
+  one_bedroom: 2.0,
+  two_bedroom: 2.3,
+  three_bedroom: 2.9,
+  four_bedroom: 3.4,
+};
+
+export const CompleteReport = ({
+  property,
+  taxRecords,
+  taxIssues,
+  neighborSales,
+  demographics,
+  building,
+  analytics
 }: CompleteReportProps) => {
   const { toast } = useToast();
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
   const [images, setImages] = useState<PropertyImage[]>([]);
   const [loadingAssets, setLoadingAssets] = useState(true);
+  const [countyName, setCountyName] = useState("");
+  const [currentMarketValue, setCurrentMarketValue] = useState<number | null>(null);
+  const [loadingMarketValue, setLoadingMarketValue] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch additional data on component mount
   useEffect(() => {
@@ -86,8 +108,48 @@ export const CompleteReport = ({
     };
 
     fetchAdditionalData();
-  }, [property.parcel_id]);
+  }, [property.parcel_id, documents, images]);
+
+  useEffect(() => {
+    async function fetchCountyName() {
+      if (property.county_id) {
+        try {
+          const res = await fetch(`/api/counties/${property.county_id}`, {
+            headers: { 'x-api-key': '7f2e1c9a-auctions-2025' }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setCountyName(data.county?.county_name || "");
+          }
+        } catch (e) {
+          // fallback: keep county_id
+        }
+      }
+    }
+    fetchCountyName();
+  }, [property.county_id]);
   
+  // Fetch current market value from dedicated endpoint
+  useEffect(() => {
+    const fetchMarketValue = async () => {
+      try {
+        setLoadingMarketValue(true);
+        const response = await fetch(`/api/properties/${property.parcel_id}/market-value`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch market value.');
+        }
+        const data = await response.json();
+        setCurrentMarketValue(data.market_value);
+      } catch (err) {
+        setError('Failed to fetch market value.');
+      } finally {
+        setLoadingMarketValue(false);
+      }
+    };
+
+    fetchMarketValue();
+  }, [property.parcel_id]);
+
   const completeData: CompletePropertyData = {
     property,
     adValoremTax: [], // Populated from mock data
@@ -161,8 +223,59 @@ export const CompleteReport = ({
     }
   };
 
-  const currentTax = taxRecords[0];
+  // Select the latest valid tax record with show_flag true and building_value > 0
+  const currentTax = taxRecords
+    .filter(tr => {
+      // Accept building_value as valid if it's a number > 0, or a string that parses to a number > 0
+      const bv = typeof tr.building_value === 'string' ? parseFloat(tr.building_value) : tr.building_value;
+      return tr.show_flag && typeof bv === 'number' && bv > 0;
+    })
+    .sort((a, b) => b.tax_year - a.tax_year)[0] || taxRecords[0];
+
+  // Novo: Pega o último tax record válido para assessed_value
+  // Corrigido: usar o tax record mais recente com show_flag e ambos market_value e assessed_value > 0
+  const lastValidTax = taxRecords
+    .filter(tr => {
+      const assessed = typeof tr.assessed_value === 'number' ? tr.assessed_value : parseFloat(tr.assessed_value);
+      const market = typeof tr.market_value === 'number' ? tr.market_value : parseFloat(tr.market_value);
+      return tr.show_flag && assessed > 0 && market > 0;
+    })
+    .sort((a, b) => b.tax_year - a.tax_year)[0] || { market_value: 0, assessed_value: 0 }; // Fallback para evitar undefined
   const currentIssue = taxIssues[0];
+
+  // Substituir lastValidTax.market_value pelo valor correto vindo do endpoint
+  // const marketValue = property.current_market_value; // Atualizado para usar o valor correto do endpoint
+
+  // Atualizar cálculos dependentes
+  const valueDifference = currentMarketValue! - lastValidTax.assessed_value;
+  const assessmentRatio = ((lastValidTax.assessed_value / currentMarketValue!) * 100).toFixed(1);
+
+  // Garantir que lastValidTax e market_value sejam válidos
+  const validMarketValue = lastValidTax && lastValidTax.market_value > 0 ? lastValidTax.market_value : 0;
+
+  // Adicionar logs para depuração de lastValidTax e market_value
+  console.log('lastValidTax:', lastValidTax);
+  console.log('lastValidTax.market_value:', lastValidTax?.market_value);
+
+  // Adicionar logs para depurar valores usados no cálculo de Assessment Ratio
+  console.log('Assessed Value:', lastValidTax.assessed_value);
+  console.log('Market Value:', lastValidTax.market_value);
+  console.log('Assessment Ratio:', assessmentRatio);
+
+  // Adicionar logs para depurar valores usados no cálculo de Value Difference
+  console.log('Market Value (para Value Difference):', lastValidTax.market_value);
+  console.log('Assessed Value (para Value Difference):', lastValidTax.assessed_value);
+  console.log('Value Difference:', valueDifference);
+
+  // Relacionar número de quartos com os dados do endpoint
+  console.log("Fair Market Rent Data:", fairMarketRent);
+  console.log("Number of Bedrooms:", property?.beds);
+
+  const monthlyRentEst = fairMarketRent && fairMarketRent.four_bedroom ? fairMarketRent.four_bedroom * 1000 : 0;
+  console.log("Calculated Monthly Rent Est.:", monthlyRentEst);
+
+  const potentialAnnualRent = monthlyRentEst * 12;
+  console.log("Calculated Potential Annual Rent:", potentialAnnualRent);
 
   return (
     <motion.div 
@@ -212,24 +325,28 @@ export const CompleteReport = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* Market Value */}
             <div className="text-center p-4 rounded-lg bg-primary/10">
               <div className="text-3xl font-bold text-primary mb-2">
                 $<AnimatedCounter value={property.current_market_value} duration={2.5} delay={0.3} />
               </div>
               <p className="text-sm text-muted-foreground font-medium">Current Market Value</p>
             </div>
+            {/* Risk Score */}
             <div className="text-center p-4 rounded-lg bg-secondary/10">
               <div className="text-3xl font-bold text-secondary mb-2">
                 <AnimatedCounter value={parseFloat(analytics.overallRiskScore.toFixed(0))} duration={2.5} delay={0.5} />%
               </div>
               <p className="text-sm text-muted-foreground font-medium">Overall Risk Score</p>
             </div>
+            {/* ROI Potential */}
             <div className="text-center p-4 rounded-lg bg-accent/10">
               <div className="text-3xl font-bold text-accent mb-2">
                 <AnimatedCounter value={parseFloat(analytics.potentialROI.toFixed(1))} duration={2.5} delay={0.7} />%
               </div>
               <p className="text-sm text-muted-foreground font-medium">ROI Potential</p>
             </div>
+            {/* Rent Potential */}
             <div className="text-center p-4 rounded-lg bg-muted/30">
               <div className="text-3xl font-bold text-foreground mb-2">
                 $<AnimatedCounter value={property.potential_rent_income} duration={2.5} delay={0.9} />
@@ -255,6 +372,7 @@ export const CompleteReport = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Property Details */}
             <div className="space-y-3">
               <h4 className="font-semibold text-primary">Property Details</h4>
               <div className="space-y-2">
@@ -263,20 +381,21 @@ export const CompleteReport = ({
                   <Badge variant="outline">{property.parcel_id}</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">County ID:</span>
-                  <span className="font-medium">{property.county_id}</span>
+                  <span className="text-muted-foreground">County:</span>
+                  <span className="font-medium">{countyName || property.county_id}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tax Year:</span>
                   <span className="font-medium">{property.tax_year}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Country:</span>
-                  <span className="font-medium">{property.country}</span>
+                  <span className="text-muted-foreground">Instrument Number:</span>
+                  <span className="font-medium">{property.inst_num}</span>
                 </div>
               </div>
             </div>
 
+            {/* Owner Information */}
             <div className="space-y-3">
               <h4 className="font-semibold text-primary">Owner Information</h4>
               <div className="space-y-2">
@@ -288,9 +407,18 @@ export const CompleteReport = ({
                   <span className="text-muted-foreground">Occupancy:</span>
                   <Badge variant="secondary">{property.occupancy_status}</Badge>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Address:</span>
+                  <span className="font-medium text-right whitespace-nowrap">{property.mail_address}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">City, State ZIP:</span>
+                  <span className="font-medium">{property.mail_city}{property.mail_city ? ',' : ''} {property.mail_state} {property.mail_zip}</span>
+                </div>
               </div>
             </div>
 
+            {/* Location Details */}
             <div className="space-y-3">
               <h4 className="font-semibold text-primary">Location Details</h4>
               <div className="space-y-2">
@@ -327,6 +455,7 @@ export const CompleteReport = ({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Basic Information */}
               <div className="space-y-3">
                 <h4 className="font-semibold text-primary">Basic Information</h4>
                 <div className="space-y-2">
@@ -349,6 +478,7 @@ export const CompleteReport = ({
                 </div>
               </div>
 
+              {/* Size & Layout */}
               <div className="space-y-3">
                 <h4 className="font-semibold text-primary">Size & Layout</h4>
                 <div className="space-y-2">
@@ -361,7 +491,7 @@ export const CompleteReport = ({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Bathrooms:</span>
                     <span className="font-bold text-primary">
-                      <AnimatedCounter value={building.baths} duration={1.5} delay={1.2} />
+                      <AnimatedCounter value={building.baths} duration={1.5} delay={1.2} decimals={1} />
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -385,6 +515,7 @@ export const CompleteReport = ({
                 </div>
               </div>
 
+              {/* Construction & Value */}
               <div className="space-y-3">
                 <h4 className="font-semibold text-primary">Construction & Value</h4>
                 <div className="space-y-2">
@@ -410,11 +541,17 @@ export const CompleteReport = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Building Value:</span>
-                    <span className="font-bold text-primary">$<AnimatedCounter value={building.bldg_value} duration={2} delay={1.8} /></span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Est. New Cost:</span>
-                    <span className="font-medium">$<AnimatedCounter value={building.est_new_cost} duration={2} delay={1.9} /></span>
+                    <span className="font-bold text-primary">$
+                      <AnimatedCounter 
+                        value={
+                          (typeof currentTax?.building_value === 'string' ? parseFloat(currentTax.building_value) : currentTax?.building_value) > 0
+                            ? (typeof currentTax.building_value === 'string' ? parseFloat(currentTax.building_value) : currentTax.building_value)
+                            : building.bldg_value
+                        }
+                        duration={2}
+                        delay={1.8}
+                      />
+                    </span>
                   </div>
                 </div>
               </div>
@@ -438,22 +575,54 @@ export const CompleteReport = ({
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Market Value:</span>
-                  <span className="font-bold text-primary">$<AnimatedCounter value={property.current_market_value} duration={2} delay={1.2} /></span>
+                  <span className="font-bold text-primary">$
+                    <AnimatedCounter 
+                      value={property.current_market_value} // Usar o mesmo valor do Executive Summary
+                      duration={2}
+                      delay={1.2}
+                    />
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Assessed Value:</span>
-                  <span className="font-bold text-secondary">$<AnimatedCounter value={property.assessed_value} duration={2} delay={1.4} /></span>
+                  <span className="font-bold text-secondary">$
+                    <AnimatedCounter 
+                      value={typeof lastValidTax.assessed_value === 'string' ? parseFloat(lastValidTax.assessed_value) : lastValidTax.assessed_value}
+                      duration={2}
+                      delay={1.4}
+                    />
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Assessment Ratio:</span>
                   <span className="font-medium">
-                    <AnimatedCounter value={parseFloat(((property.assessed_value / property.current_market_value) * 100).toFixed(1))} duration={1.5} delay={1.6} />%
+                    <AnimatedCounter 
+                      value={
+                        lastValidTax && lastValidTax.market_value > 0
+                          ? parseFloat(((
+                              (typeof lastValidTax.assessed_value === 'string' ? parseFloat(lastValidTax.assessed_value) : lastValidTax.assessed_value) /
+                              (typeof lastValidTax.market_value === 'string' ? parseFloat(lastValidTax.market_value) : lastValidTax.market_value)
+                            ) * 100).toFixed(1))
+                          : 0
+                      }
+                      duration={1.5}
+                      delay={1.6}
+                    />%
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Value Difference:</span>
-                  <span className={`font-medium ${property.current_market_value > property.assessed_value ? 'text-secondary' : 'text-destructive'}`}>
-                    $<AnimatedCounter value={Math.abs(property.current_market_value - property.assessed_value)} duration={2} delay={1.8} />
+                  <span className={`font-medium ${
+                    (typeof lastValidTax.market_value === 'string' ? parseFloat(lastValidTax.market_value) : lastValidTax.market_value) >
+                    (typeof lastValidTax.assessed_value === 'string' ? parseFloat(lastValidTax.assessed_value) : lastValidTax.assessed_value)
+                      ? 'text-secondary'
+                      : 'text-destructive'
+                  }`}>
+                    $<AnimatedCounter 
+                      value={valueDifference}
+                      duration={2}
+                      delay={1.8}
+                    />
                   </span>
                 </div>
               </div>
@@ -556,7 +725,7 @@ export const CompleteReport = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Building Value:</span>
-                    <span className="font-medium">${currentTax.building_value.toLocaleString()}</span>
+                    <span className="font-medium">${(typeof currentTax.building_value === 'string' ? parseFloat(currentTax.building_value) : currentTax.building_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Features Value:</span>
@@ -634,7 +803,11 @@ export const CompleteReport = ({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Land per SqFt:</span>
-                  <span className="font-medium">${(currentTax?.land_value || 0 / property.sqft).toFixed(2)}</span>
+                  <span className="font-medium">${(
+                    property.sqft && currentTax?.land_value
+                      ? currentTax.land_value / property.sqft
+                      : 0
+                  ).toFixed(2)}</span>
                 </div>
               </div>
             </div>

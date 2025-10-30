@@ -309,13 +309,7 @@ export const PropertyInput = ({ onAnalyze, isLoading }: PropertyInputProps) => {
                     disabled={isLoading || isProcessingParcelId || !parcelId?.trim()}
                   >
                     {isLoading ? (
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="mr-2"
-                      >
-                        🔄
-                      </motion.div>
+                      <Sparkles className="h-5 w-5 mr-2 animate-spin" />
                     ) : isProcessingParcelId ? (
                       <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                     ) : (

@@ -79,9 +79,42 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
   const [error, setError] = useState<string | null>(null);
 
   // Extract all data from propertyData
-  const { property } = propertyData;
-  const { taxRecords, taxHistoryIssues, neighborSales, demographics, buildings, analytics } = propertyData;
+  // Substituir valores do property/analytics pelos vindos da API (valuation, roiData, totalRiskScore)
+  const { property: origProperty } = propertyData;
+  const { taxRecords, taxHistoryIssues, neighborSales, demographics, buildings, analytics: origAnalytics } = propertyData;
   const building = buildings && buildings.length > 0 ? buildings[0] : null;
+
+  // Novo: buscar ROI Potential e Market Position do backend
+  const [roiData, setRoiData] = useState<PropertyRoiPotential | null>(null);
+  const [roiError, setRoiError] = useState<string | null>(null);
+  const [valuation, setValuation] = useState<PropertyValuation | null>(null);
+  const [valuationError, setValuationError] = useState<string | null>(null);
+
+  // Montar property/analytics com sobrescrita dos valores vindos da API (após definição de roiData/valuation)
+  const property = {
+    ...origProperty,
+    current_market_value: valuation?.market_value ?? origProperty.current_market_value,
+    potential_rent_income: roiData?.potential_rent_income ?? origProperty.potential_rent_income,
+  };
+  const analytics = origAnalytics
+    ? {
+        ...origAnalytics,
+        overallRiskScore: totalRiskScore !== null ? totalRiskScore : origAnalytics.overallRiskScore,
+        // Corrigir: converter ROI de fração para porcentagem
+        potentialROI: roiData?.roi_potential_percent !== undefined
+          ? roiData.roi_potential_percent
+          : origAnalytics.potentialROI,
+      }
+    : {
+        overallRiskScore: totalRiskScore !== null ? totalRiskScore : 0,
+        potentialROI: roiData?.roi_potential_percent ?? 0,
+        financialRiskScore: 0,
+        socialRiskScore: 0,
+        climateRiskScore: 0,
+        neighborBenchmark: 0,
+        aiNarrative: '',
+        actionableRecommendations: [],
+      };
 
   // Corrigir property.heated_area, beds e baths usando o primeiro building se necessário
   if (buildings && buildings.length > 0) {
@@ -100,11 +133,7 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
   }
 
 
-  // Novo: buscar ROI Potential e Market Position do backend
-  const [roiData, setRoiData] = useState<PropertyRoiPotential | null>(null);
-  const [roiError, setRoiError] = useState<string | null>(null);
-  const [valuation, setValuation] = useState<PropertyValuation | null>(null);
-  const [valuationError, setValuationError] = useState<string | null>(null);
+  // (Removido: duplicado acima)
 
   useEffect(() => {
     const fetchRoi = async () => {
@@ -261,7 +290,7 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
               />
               <AnimatedMetric
                 title="ROI Potential"
-                value={roiData?.roi_potential_percent ?? 0}
+                value={roiData?.roi_potential_percent !== undefined ? roiData.roi_potential_percent : 0}
                 format="percentage"
                 icon={TrendingUp}
                 colorScheme="secondary"

@@ -81,6 +81,7 @@ interface Property {
     mail_city?: string;
     mail_state?: string;
     mail_zip?: string;
+    fair_market_rent?: number;
     // Outras propriedades já adicionadas
 }
 
@@ -214,7 +215,10 @@ export const CompleteReport = ({
           throw new Error(`Failed to fetch market value. Status: ${response.status}`);
         }
         const data = await response.json();
-        console.log("[DEBUG] API Response Data:", data);
+        // Adicionando logs detalhados na função fetchMarketValue
+        console.log('[DEBUG] Iniciando fetchMarketValue para parcel_id:', property.parcel_id);
+        console.log('[DEBUG] API Response Data:', data);
+        console.log('[DEBUG] Atualizando currentMarketValue com:', data.market_value);
         setCurrentMarketValue(data.market_value);
       } catch (err) {
         console.error("[DEBUG] Error fetching market value:", err);
@@ -369,7 +373,7 @@ export const CompleteReport = ({
       : '0.0';
 
   // Garantir que lastValidTax e market_value sejam válidos
-  const validMarketValue = lastValidTax && lastValidTax.market_value > 0 ? lastValidTax.market_value : 0;
+  const validMarketValue = property?.current_market_value || 0;
 
   // Adicionar logs para depuração de lastValidTax e market_value
   console.log('lastValidTax:', lastValidTax);
@@ -435,6 +439,7 @@ export const CompleteReport = ({
     }
   }, [property, monthlyRentEst, potentialAnnualRent]);
 
+  // Reutilizando o valor de `currentMarketValue` do Executive Summary
   const formattedMarketValue = currentMarketValue !== null ? formatDollar(currentMarketValue) : "$0.00";
   const formattedAssessedValue = formatDollar(lastValidTax.assessed_value);
   const formattedValueDifference = formatDollar(valueDifference);
@@ -443,17 +448,24 @@ export const CompleteReport = ({
   console.log('[DEBUG] Valor de potential_rent_income:', property.potential_rent_income);
 
   // Reutilizando o valor de `currentMarketValue` para o componente `Property Valuation & Financial Analysis`
-  const PropertyValuationAnalysis = ({ currentMarketValue }: { currentMarketValue: number | null }) => {
+  const PropertyValuationAnalysis = ({ marketValue }: { marketValue: number | null }) => {
     return (
-      <div>
-        <h3>Property Valuation & Financial Analysis</h3>
-        <div>
-          <strong>Current Valuations</strong>
-          <p>Market Value: {currentMarketValue !== null ? formatDollar(currentMarketValue) : "$0.00"}</p>
-        </div>
-      </div>
+      <p>Market Value: {marketValue !== null ? formatDollar(marketValue) : "$0.00"}</p>
     );
   };
+
+  console.log('[DEBUG] Renderizando Market Value em Property Valuation:', currentMarketValue);
+
+  // Adicionando logs detalhados para depuração
+  console.log('[DEBUG] currentMarketValue:', currentMarketValue);
+  console.log('[DEBUG] validMarketValue:', validMarketValue);
+
+  // Garantindo que o valor de currentMarketValue seja reutilizado diretamente
+  const marketValueToDisplay = property?.current_market_value ? formatDollar(property.current_market_value) : "$0.00";
+
+  // Adicionando logs detalhados para depuração
+  console.log('[DEBUG] Valor de property:', property);
+  console.log('[DEBUG] Valor de property.current_market_value:', property?.current_market_value);
 
   return (
     <div>
@@ -786,7 +798,9 @@ export const CompleteReport = ({
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Land Value:</span>
-                      <span className="font-bold text-primary">${currentTax?.land_value.toLocaleString() || 'N/A'}</span>
+                      <span className="font-bold text-primary">
+                        {currentTax?.land_value ? formatDollar(currentTax.land_value) : 'N/A'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">% of Total Value:</span>
@@ -816,7 +830,7 @@ export const CompleteReport = ({
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Market Value:</span>
-                      <span className="font-bold text-primary">{formattedMarketValue}</span>
+                      <span className="font-bold text-primary">{formatDollar(validMarketValue)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Assessed Value:</span>
@@ -905,7 +919,7 @@ export const CompleteReport = ({
                 {/* Fair Market Rent Data */}
                 <div className="text-center p-4 rounded-lg bg-accent/10">
                   <div className="text-xl font-medium text-accent mb-2">
-                    Fair Market Rent: {numberOfBedrooms}-Bedroom
+                    Fair Market Rent: {property?.fair_market_rent ? formatDollar(property.fair_market_rent) : "$0.00"}
                   </div>
                   <p className="text-sm text-muted-foreground font-medium">
                     {formatDollar(fairMarketRentValue)} per month
@@ -1053,6 +1067,7 @@ export const CompleteReport = ({
                           </div>
                         </div>
                       </div>
+                   
                     ))}
                   </div>
                 </div>

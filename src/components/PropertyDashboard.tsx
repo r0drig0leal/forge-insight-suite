@@ -1,5 +1,41 @@
 import { useState, useEffect, useMemo } from "react";
 
+
+import { ArrowLeft, Download, MessageCircle, Home, AlertTriangle, TrendingUp, DollarSign, FileText, LogOut } from "lucide-react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { API_BASE_URL } from "@/lib/apiConfig";
+import { RiskReport } from "./RiskReport";
+import { InvestmentReport } from "./InvestmentReport";
+import { CompleteReport } from "./CompleteReport";
+import { LoadingSpinner } from "./LoadingSpinner";
+import { AIStoryEngine } from "./interactive/AIStoryEngine";
+import { AnimatedMetric } from "./interactive/AnimatedMetrics";
+import { GamificationBadge } from "./interactive/GamificationBadge";
+import { RiskScoreBreakdown } from "./overview/RiskScoreBreakdown";
+import { RegionalComparatives } from "./overview/RegionalComparatives";
+import { TrendSparklines } from "./overview/TrendSparklines";
+import { AIConfidenceScore } from "./overview/AIConfidenceScore";
+import { GamificationProgress } from "./overview/GamificationProgress";
+import { getPropertyRoiPotential } from '@/lib/roi';
+import { getPropertyValuation } from '@/lib/valuation';
+import type { PropertyValuation } from '@/lib/valuation';
+import type { PropertyRoiPotential } from '@/lib/api';
+
+
+// Componente principal
+
+import type { CompletePropertyData } from "@/lib/api";
+
+interface PropertyDashboardProps {
+  parcelId: string;
+  onBack: () => void;
+  propertyData: CompletePropertyData;
+}
+
 interface Property {
   // Adapte conforme necessário
   property_address?: string;
@@ -16,42 +52,6 @@ interface NeighborSale {
   sale_date?: string;
   sale_price?: number;
 }
-import { ArrowLeft, Download, MessageCircle, Home, AlertTriangle, TrendingUp, DollarSign, FileText, LogOut } from "lucide-react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { RiskReport } from "./RiskReport";
-import { InvestmentReport } from "./InvestmentReport";
-import { CompleteReport } from "./CompleteReport";
-import { LoadingSpinner } from "./LoadingSpinner";
-import { AIStoryEngine } from "./interactive/AIStoryEngine";
-import { AnimatedMetric } from "./interactive/AnimatedMetrics";
-import { GamificationBadge } from "./interactive/GamificationBadge";
-import { RiskScoreBreakdown } from "./overview/RiskScoreBreakdown";
-import { RegionalComparatives } from "./overview/RegionalComparatives";
-import { TrendSparklines } from "./overview/TrendSparklines";
-import { AIConfidenceScore } from "./overview/AIConfidenceScore";
-import { GamificationProgress } from "./overview/GamificationProgress";
-
-import { getPropertyRoiPotential } from '@/lib/roi';
-import { API_BASE_URL } from "@/lib/apiConfig";
-import { getPropertyValuation } from '@/lib/valuation';
-import type { PropertyValuation } from '@/lib/valuation';
-import type { PropertyRoiPotential } from '@/lib/api';
-
-
-// Componente principal
-
-import type { CompletePropertyData } from "@/lib/api";
-
-interface PropertyDashboardProps {
-  parcelId: string;
-  onBack: () => void;
-  propertyData: CompletePropertyData;
-}
-
 
 export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDashboardProps) => {
   // Estado para o total risk score
@@ -192,7 +192,7 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
     };
 
     fetchData();
-  }, [parcelId, dataLoaded]);
+  }, [parcelId, dataLoaded, neighborSalesState, propertyState]);
 
   // Atualizar neighborBenchmark sempre que roiData mudar
   useEffect(() => {
@@ -570,12 +570,13 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
           <TabsContent value="complete">
             <CompleteReport
               property={property}
-              taxRecords={taxRecords}
+              taxRecords={taxRecordsState}
               taxIssues={taxHistoryIssues}
-              neighborSales={neighborSales}
+              neighborSales={neighborSalesState}
               demographics={demographics}
               building={building}
               analytics={analytics}
+              currentMarketValue={property.current_market_value} // Adicionado
             />
           </TabsContent>
         </Tabs>

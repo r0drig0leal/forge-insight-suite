@@ -25,13 +25,14 @@ export const API_ENDPOINTS = {
 };
 
 // API Headers (constante)
+// Forçando a inclusão da chave de API para depuração
 export const API_HEADERS = {
-  'Content-Type': 'application/json; charset=utf-8',
-  'Authorization': `Bearer ${ENV_CONFIG.API.AUTH.BEARER_TOKEN}`,
-  'x-api-key': ENV_CONFIG.API.AUTH.API_KEY,
-  'Accept': 'application/json',
-  'Accept-Charset': 'utf-8',
+  'Content-Type': 'application/json',
+  'x-api-key': '7f2e1c9a-auctions-2025', // Substituído pela chave correta
 };
+
+// Adicionando log para verificar os cabeçalhos
+console.log("[DEBUG] API_HEADERS:", API_HEADERS);
 
 // API Timeout (constante)
 export const API_TIMEOUT = ENV_CONFIG.API.TIMEOUT;
@@ -278,7 +279,7 @@ export interface PropertyRoiPotential {
   market_position_score?: number;
   market_position?: string;
   market_position_vs_neighborhood_percent?: number;
-  market_position_vs_neighborhood_label?: string;
+  market_position_vs_neighborhood_label?: number;
 }
 
 // API Client class
@@ -1002,3 +1003,6 @@ export const debounce = <T extends (...args: unknown[]) => void>(
     timeoutId = setTimeout(() => func(...args), delay);
   };
 };
+
+// Adicionando logs para verificar a chave de API
+console.log("[DEBUG] VITE_API_KEY:", import.meta.env.VITE_API_KEY);

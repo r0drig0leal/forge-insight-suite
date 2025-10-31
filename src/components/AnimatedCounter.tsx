@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
 interface AnimatedCounterProps {
@@ -11,7 +11,7 @@ interface AnimatedCounterProps {
   suffix?: string;
 }
 
-export const AnimatedCounter = ({ 
+export const AnimatedCounter = memo(({ 
   value, 
   duration = 2, 
   delay = 0, 
@@ -26,8 +26,8 @@ export const AnimatedCounter = ({
 
   useEffect(() => {
     setIsAnimating(true);
-  let rafId: number;
-  let timerId: NodeJS.Timeout | null = null;
+    let rafId: number;
+    let timerId: NodeJS.Timeout | null = null;
     let startTime: number | null = null;
 
     const animate = (timestamp: number) => {
@@ -44,7 +44,7 @@ export const AnimatedCounter = ({
       }
     };
 
-  timerId = setTimeout(() => {
+    timerId = setTimeout(() => {
       startTime = null;
       rafId = requestAnimationFrame(animate);
     }, delay * 1000);
@@ -68,4 +68,4 @@ export const AnimatedCounter = ({
       </span>
     </motion.span>
   );
-};
+});

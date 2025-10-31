@@ -1,110 +1,11 @@
-// ROI Potential (centralizado para uso em hooks e integração)
-export interface PropertyRoiPotential {
-  parcel_id: string;
-  potential_rent_income: number;
-  estimated_renovation_cost: number;
-  estimated_eviction_cost: number;
-  market_value: number;
-  net_annual_income: number;
-  roi_potential_percent: number;
-  range_low: number;
-  range_high: number;
-  calculated_at: string;
-  num_comps: number;
-  market_position_score?: number; // percentual (ex: 7.5)
-  market_position?: string; // legacy string, fallback
-  market_position_vs_neighborhood_percent?: number;
-  market_position_vs_neighborhood_label?: string;
-  risk_category?: string;
-}
-// --- New Types for Additional Property Resources ---
-export interface PropertyBuildingFeature {
-  parcel_id: string;
-  feature_code: string;
-  feature_value: string;
-  feature_description: string;
-}
+import { ENV_CONFIG } from './env';
+import { API_BASE_URL } from './apiConfig';
 
-export interface PropertyBuildingSubarea {
-  parcel_id: string;
-  subarea_code: string;
-  sub_desc: string;
-  sub_size: number;
-  sub_value: number;
-}
-
-export interface PropertyExtraFeature {
-  parcel_id: string;
-  xfob_code: string;
-  desc_short: string;
-  xfob_qty: number;
-  xfob_value: number;
-  date_built: string;
-}
-
-export interface PropertyLandArea {
-  parcel_id: string;
-  acreage: number;
-  sqft: number;
-  instr_num: string;
-}
-
-export interface PropertyLandFeature {
-  parcel_id: string;
-  landDorCode: string;
-  descShort: string;
-  zoning: string;
-  landQty: number;
-  landQtyCode: string;
-  unitPrice: number;
-  landValue: number;
-  classUnitPrice: number;
-  classValue: number;
-}
-
-export interface PropertyLegalDescription {
-  parcel_id: string;
-  description: string;
-}
-
-export interface PropertyNeighborSale {
-  parcel_id: string;
-  neighbor_id: string;
-  property_address: string;
-  sale_date: string;
-  sale_price: number;
-  heated_area: number;
-  deed_desc: string;
-  beds: number;
-  baths: number;
-  instr_num: string;
-  book: string;
-  page: string;
-  total_count: number;
-}
-
-export interface PropertyNonAdValoremTax {
-  parcel_id: string;
-  tax_year: number;
-  tax_type: string;
-  amount: number;
-  description: string;
-}
-
-export interface PropertyService {
-  parcel_id: string;
-  serviceCode: string;
-  providerName: string;
-  navigateURL: string;
-  serviceDesc: string;
-  serviceDay: string;
-}
 /**
  * API Configuration and utilities
  */
 
-import { ENV_CONFIG, isDebugMode } from '@/lib/env';
-import { API_BASE_URL } from './apiConfig';
+import { isDebugMode } from '@/lib/env';
 import type { Request, Response } from 'express';
 
 // API Endpoints (constantes)
@@ -329,6 +230,7 @@ export interface PropertyDisasterRisk {
 // Complete property data structure
 // Unified CompletePropertyData for compatibility with exportUtils and CompleteReport
 import type { PropertyData, TaxRecord, TaxHistoryIssue, NeighborSale, Demographics, Building, PropertyAnalytics, AdValoremTax, BuildingFeature, BuildingSubarea, Community, PropertyDocument, ExtraFeature, PropertyImage, LandArea, LandFeature, LegalDescription, NonAdValoremTax, PropertyOfficial, SalesRecord, School } from './mockData';
+import { PropertyService } from './mockData';
 
 export interface CompletePropertyData {
   property: PropertyData;
@@ -355,18 +257,42 @@ export interface CompletePropertyData {
   analytics: PropertyAnalytics;
 }
 
+// Exportando o tipo PropertyRoiPotential
+export interface PropertyRoiPotential {
+  parcel_id: string;
+  potential_rent_income?: number;
+  estimated_renovation_cost: number;
+  estimated_eviction_cost: number;
+  market_value: number;
+  net_annual_income: number;
+  roi_potential_percent?: number;
+  roi_percent?: number; // Adicionado
+  roi_neighborhood_avg?: number; // Adicionado
+  vs_neighborhood?: string; // Adicionado
+  annual_rent_income?: number; // Adicionado
+  risk_category?: string; // Adicionado
+  range_low: number;
+  range_high: number;
+  calculated_at: string;
+  num_comps: number;
+  market_position_score?: number;
+  market_position?: string;
+  market_position_vs_neighborhood_percent?: number;
+  market_position_vs_neighborhood_label?: string;
+}
+
 // API Client class
 class ApiClient {
   // --- New Methods for Additional Property Resources ---
 
   async getPropertyBuildingFeatures(parcelId: string) {
     const endpoint = `/api/property_building_features/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyBuildingFeature[]>(endpoint);
+    return this.request<BuildingFeature[]>(endpoint);
   }
 
-  async addPropertyBuildingFeature(data: PropertyBuildingFeature) {
+  async addPropertyBuildingFeature(data: BuildingFeature) {
     const endpoint = `/api/property_building_features`;
-    return this.request<PropertyBuildingFeature>(endpoint, {
+    return this.request<BuildingFeature>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -374,12 +300,12 @@ class ApiClient {
 
   async getPropertyBuildingSubareas(parcelId: string) {
     const endpoint = `/api/property_building_subareas/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyBuildingSubarea[]>(endpoint);
+    return this.request<BuildingSubarea[]>(endpoint);
   }
 
-  async addPropertyBuildingSubarea(data: PropertyBuildingSubarea) {
+  async addPropertyBuildingSubarea(data: BuildingSubarea) {
     const endpoint = `/api/property_building_subareas`;
-    return this.request<PropertyBuildingSubarea>(endpoint, {
+    return this.request<BuildingSubarea>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -387,12 +313,12 @@ class ApiClient {
 
   async getPropertyExtraFeatures(parcelId: string) {
     const endpoint = `/api/property_extra_features/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyExtraFeature[]>(endpoint);
+    return this.request<ExtraFeature[]>(endpoint);
   }
 
-  async addPropertyExtraFeature(data: PropertyExtraFeature) {
+  async addPropertyExtraFeature(data: ExtraFeature) {
     const endpoint = `/api/property_extra_features`;
-    return this.request<PropertyExtraFeature>(endpoint, {
+    return this.request<ExtraFeature>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -400,12 +326,12 @@ class ApiClient {
 
   async getPropertyLandAreas(parcelId: string) {
     const endpoint = `/api/property_land_areas/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyLandArea[]>(endpoint);
+    return this.request<LandArea[]>(endpoint);
   }
 
-  async addPropertyLandArea(data: PropertyLandArea) {
+  async addPropertyLandArea(data: LandArea) {
     const endpoint = `/api/property_land_areas`;
-    return this.request<PropertyLandArea>(endpoint, {
+    return this.request<LandArea>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -413,12 +339,12 @@ class ApiClient {
 
   async getPropertyLandFeatures(parcelId: string) {
     const endpoint = `/api/property_land_features/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyLandFeature[]>(endpoint);
+    return this.request<LandFeature[]>(endpoint);
   }
 
-  async addPropertyLandFeature(data: PropertyLandFeature) {
+  async addPropertyLandFeature(data: LandFeature) {
     const endpoint = `/api/property_land_features`;
-    return this.request<PropertyLandFeature>(endpoint, {
+    return this.request<LandFeature>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -426,12 +352,12 @@ class ApiClient {
 
   async getPropertyLegalDescriptions(parcelId: string) {
     const endpoint = `/api/property_legal_descriptions/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyLegalDescription[]>(endpoint);
+    return this.request<LegalDescription[]>(endpoint);
   }
 
-  async addPropertyLegalDescription(data: PropertyLegalDescription) {
+  async addPropertyLegalDescription(data: LegalDescription) {
     const endpoint = `/api/property_legal_descriptions`;
-    return this.request<PropertyLegalDescription>(endpoint, {
+    return this.request<LegalDescription>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -439,12 +365,12 @@ class ApiClient {
 
   async getPropertyNeighborSales(parcelId: string) {
     const endpoint = `/api/property_neighbor_sales/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyNeighborSale[]>(endpoint);
+    return this.request<NeighborSale[]>(endpoint);
   }
 
-  async addPropertyNeighborSale(data: PropertyNeighborSale) {
+  async addPropertyNeighborSale(data: NeighborSale) {
     const endpoint = `/api/property_neighbor_sales`;
-    return this.request<PropertyNeighborSale>(endpoint, {
+    return this.request<NeighborSale>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -452,12 +378,12 @@ class ApiClient {
 
   async getPropertyNonAdValoremTax(parcelId: string) {
     const endpoint = `/api/property_non_ad_valorem_tax/${encodeURIComponent(parcelId)}`;
-    return this.request<PropertyNonAdValoremTax[]>(endpoint);
+    return this.request<NonAdValoremTax[]>(endpoint);
   }
 
-  async addPropertyNonAdValoremTax(data: PropertyNonAdValoremTax) {
+  async addPropertyNonAdValoremTax(data: NonAdValoremTax) {
     const endpoint = `/api/property_non_ad_valorem_tax`;
-    return this.request<PropertyNonAdValoremTax>(endpoint, {
+    return this.request<NonAdValoremTax>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -1009,11 +935,20 @@ class ApiClient {
       }
     }
   async getPropertyLocation(parcelId: string): Promise<ApiResponse<PropertyLocation[]>> {
-  const endpoint = `${API_ENDPOINTS.PROPERTY_LOCATION}/${encodeURIComponent(parcelId)}`;
-  console.log('🔍 DEBUG: getPropertyLocation endpoint:', endpoint);
-  console.log('🔍 DEBUG: Base URL:', API_BASE_URL);
-  console.log('🔍 DEBUG: Endpoint config:', API_ENDPOINTS.PROPERTY_LOCATION);
-  return this.request<PropertyLocation[]>(endpoint);
+    try {
+      const endpoint = `${API_ENDPOINTS.PROPERTY_LOCATION}/${encodeURIComponent(parcelId)}`;
+      console.log('🔍 DEBUG: getPropertyLocation endpoint:', endpoint);
+      console.log('🔍 DEBUG: Base URL:', API_BASE_URL);
+      console.log('🔍 DEBUG: Endpoint config:', API_ENDPOINTS.PROPERTY_LOCATION);
+      return this.request<PropertyLocation[]>(endpoint);
+    } catch (error) {
+      console.error('❌ API: Failed to get property location:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Failed to get property location',
+      };
+    }
   }
 
   async getPropertyTaxRecords(parcelId: string): Promise<ApiResponse<PropertyTaxRecord[]>> {

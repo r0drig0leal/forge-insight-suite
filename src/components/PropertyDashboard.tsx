@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 interface Property {
   // Adapte conforme necessário
@@ -57,23 +57,6 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
   // Estado para o total risk score
   const [totalRiskScore, setTotalRiskScore] = useState<number | null>(null);
 
-  useEffect(() => {
-    const fetchTotalScore = async () => {
-      try {
-  const res = await fetch(`${API_BASE_URL}/api/total_risk_score/${parcelId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setTotalRiskScore(data[0]?.total_risk_score ?? null);
-        } else {
-          setTotalRiskScore(null);
-        }
-      } catch {
-        setTotalRiskScore(null);
-      }
-
-    };
-    fetchTotalScore();
-  }, [parcelId]);
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,13 +73,20 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
   const [valuation, setValuation] = useState<PropertyValuation | null>(null);
   const [valuationError, setValuationError] = useState<string | null>(null);
 
+  const [propertyState, setPropertyState] = useState(origProperty);
+  const [neighborSalesState, setNeighborSalesState] = useState(propertyData.neighborSales || []);
+  const [taxRecordsState, setTaxRecordsState] = useState(propertyData.taxRecords || []);
+  const [buildingsState, setBuildingsState] = useState(propertyData.buildings || []);
+
   // Montar property/analytics com sobrescrita dos valores vindos da API (após definição de roiData/valuation)
-  const property = {
-    ...origProperty,
-    current_market_value: valuation?.market_value ?? origProperty.current_market_value,
-    potential_rent_income: roiData?.potential_rent_income ?? origProperty.potential_rent_income,
-  };
-  const analytics = origAnalytics
+  const property = useMemo(() => {
+    return {
+      ...origProperty,
+      current_market_value: valuation?.market_value ?? origProperty.current_market_value,
+      potential_rent_income: roiData?.potential_rent_income ?? origProperty.potential_rent_income,
+    };
+  }, [origProperty, valuation, roiData]);
+  const [analytics, setAnalytics] = useState(origAnalytics
     ? {
         ...origAnalytics,
         overallRiskScore: totalRiskScore !== null ? totalRiskScore : origAnalytics.overallRiskScore,
@@ -114,7 +104,12 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
         neighborBenchmark: 0,
         aiNarrative: '',
         actionableRecommendations: [],
-      };
+      });
+
+  console.log('[DEBUG] roiData:', roiData);
+  console.log('[DEBUG] roiData.roi_potential_percent:', roiData?.roi_potential_percent);
+  console.log('[DEBUG] origAnalytics.potentialROI:', origAnalytics?.potentialROI);
+  console.log('[DEBUG] analytics.potentialROI:', analytics.potentialROI);
 
   // Corrigir property.heated_area, beds e baths usando o primeiro building se necessário
   if (buildings && buildings.length > 0) {
@@ -123,50 +118,247 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
     if ((!property.beds || property.beds === 0) && b.beds && b.beds > 0) property.beds = b.beds;
     if ((!property.baths || property.baths === 0) && b.baths && b.baths > 0) property.baths = b.baths;
   }
-  // Debug: logar dados usados no cálculo do market value
-  if (typeof window !== 'undefined') {
-    console.log('[DEBUG] property:', property);
-    console.log('[DEBUG] property.heated_area:', property && property.heated_area);
-    console.log('[DEBUG] property.beds:', property && property.beds);
-    console.log('[DEBUG] property.baths:', property && property.baths);
-    console.log('[DEBUG] neighborSales:', neighborSales);
-  }
 
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [logsShown, setLogsShown] = useState(false);
 
-  // (Removido: duplicado acima)
-
+  // Consolidar chamadas de API e evitar redundâncias
   useEffect(() => {
-    const fetchRoi = async () => {
+    if (dataLoaded) return; // Evitar chamadas repetidas
+
+    const fetchData = async () => {
       try {
-        const resp = await getPropertyRoiPotential(property.parcel_id);
-        if (resp.success && resp.data) {
-          setRoiData(resp.data);
+        setLoading(true);
+
+        const responses = await Promise.all([
+          fetch(`${API_BASE_URL}/api/property/${parcelId}`),
+          fetch(`${API_BASE_URL}/api/property_neighbor_sales/${parcelId}`),
+          fetch(`${API_BASE_URL}/api/property_tax_records/${parcelId}`),
+          fetch(`${API_BASE_URL}/api/property_buildings/${parcelId}`),
+          fetch(`${API_BASE_URL}/api/total_risk_score/${parcelId}`),
+          getPropertyRoiPotential(parcelId),
+          getPropertyValuation(parcelId),
+        ]);
+
+        const [
+          propertyData,
+          neighborSalesData,
+          taxRecordsData,
+          buildingsData,
+          totalScoreRes,
+          roiRes,
+          valuationRes,
+        ] = await Promise.all(
+          responses.map((res, index) => {
+            if (index < 4 && res instanceof Response) {
+              return res.json(); // Apenas para objetos Response
+            }
+            return res; // Para objetos já processados
+          })
+        );
+
+        setPropertyState(propertyData);
+        setNeighborSalesState(neighborSalesData);
+        setTaxRecordsState(taxRecordsData);
+        setBuildingsState(buildingsData);
+
+        if (totalScoreRes.ok) {
+          setTotalRiskScore(totalScoreRes[0]?.total_risk_score ?? null);
+        } else {
+          setTotalRiskScore(null);
+        }
+
+        if (roiRes.success && roiRes.data) {
+          setRoiData(roiRes.data);
         } else {
           setRoiData(null);
-          setRoiError(resp.error || 'Erro ao buscar ROI Potential');
+          setRoiError(roiRes.error || 'Erro ao buscar ROI Potential');
         }
-      } catch (e) {
-        setRoiData(null);
-        setRoiError('Erro ao buscar ROI Potential');
-      }
-    };
-    const fetchValuation = async () => {
-      try {
-        const resp = await getPropertyValuation(property.parcel_id);
-        if (resp.success && resp.data) {
-          setValuation(resp.data);
+
+        if (valuationRes.success && valuationRes.data) {
+          setValuation(valuationRes.data);
         } else {
           setValuation(null);
-          setValuationError(resp.error || 'Erro ao buscar Property Valuation');
+          setValuationError(valuationRes.error || 'Erro ao buscar Property Valuation');
         }
-      } catch (e) {
-        setValuation(null);
-        setValuationError('Erro ao buscar Property Valuation');
+
+        setDataLoaded(true); // Marcar como carregado
+      } catch (error) {
+        console.error('Erro ao buscar dados:', error);
+        setError('Erro ao buscar dados');
+      } finally {
+        setLoading(false);
       }
     };
-    fetchRoi();
-    fetchValuation();
-  }, [property.parcel_id]);
+
+    fetchData();
+  }, [parcelId, dataLoaded]);
+
+  // Atualizar neighborBenchmark sempre que roiData mudar
+  useEffect(() => {
+    if (roiData) {
+      const { roi_percent, roi_neighborhood_avg, vs_neighborhood, market_value, annual_rent_income } = roiData;
+
+      setAnalytics((prevAnalytics) => ({
+        ...prevAnalytics,
+        roiPercent: roi_percent,
+        neighborBenchmark: roi_neighborhood_avg,
+        vsNeighborhood: vs_neighborhood,
+        marketValue: market_value,
+        annualRentIncome: annual_rent_income,
+        potentialROI: parseFloat(roiData.roi_potential_percent.toFixed(2)), // Garantindo precisão de duas casas decimais
+      }));
+      console.log('[DEBUG] Updated analytics:', {
+        roiPercent: roi_percent,
+        neighborBenchmark: roi_neighborhood_avg,
+        vsNeighborhood: vs_neighborhood,
+        marketValue: market_value,
+        annualRentIncome: annual_rent_income,
+        potentialROI: roiData.roi_potential_percent,
+      });
+    } else {
+      console.log('[DEBUG] ROI Data is null or undefined. Skipping update.');
+    }
+  }, [roiData]);
+
+  // Consolidar lógica de carregamento de dados
+  useEffect(() => {
+    if (dataLoaded) return; // Evitar chamadas repetidas
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        const responses = await Promise.all([
+          fetch(`${API_BASE_URL}/api/property/${parcelId}`),
+          fetch(`${API_BASE_URL}/api/property_neighbor_sales/${parcelId}`),
+          fetch(`${API_BASE_URL}/api/property_tax_records/${parcelId}`),
+          fetch(`${API_BASE_URL}/api/property_buildings/${parcelId}`),
+        ]);
+
+        const [propertyData, neighborSalesData, taxRecordsData, buildingsData] = await Promise.all(
+          responses.map((res) => res.json())
+        );
+
+        setDataLoaded(true); // Marcar como carregado
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [parcelId, dataLoaded]);
+
+  // Validar neighborSales antes de prosseguir
+  const hasValidNeighborSales = useMemo(() => {
+    return neighborSales && neighborSales.length >= 3;
+  }, [neighborSales]);
+
+  // Atualizar logs de depuração com controle mais rigoroso
+  useEffect(() => {
+    if (typeof window !== 'undefined' && dataLoaded && !logsShown) {
+      if (!hasValidNeighborSales) {
+        console.warn('[AVISO] Menos de 3 comps válidos. Estimativa menos confiável.');
+      }
+      console.log('[DEBUG] Dados carregados com sucesso:', { property, neighborSales });
+      setLogsShown(true); // Garantir que os logs sejam exibidos apenas uma vez
+    }
+  }, [dataLoaded, hasValidNeighborSales, logsShown, neighborSales, property]);
+
+  // Log para identificar a origem das atualizações de property e neighborSales
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !logsShown) {
+      console.log('[DEBUG - useEffect Triggered] Dependencies changed:', {
+        propertyChanged: JSON.stringify(property),
+        neighborSalesChanged: JSON.stringify(neighborSales),
+      });
+      console.log('[DEBUG - useEffect] property and neighborSales updated:', {
+        source: 'useEffect dependency change',
+        property,
+        neighborSales,
+      });
+      setLogsShown(true); // Garante que os logs sejam exibidos apenas uma vez
+    }
+  }, [property, neighborSales, logsShown]);
+
+  // Nova lógica unificada para chamadas de API
+  useEffect(() => {
+    if (!dataLoaded) {
+      console.log('[DEBUG - API Call] Fetching all property-related data:', {
+        parcelId,
+      });
+
+      const fetchData = async () => {
+        try {
+          const [
+            propertyResponse,
+            neighborSalesResponse,
+            floodRiskResponse,
+            salesRecordsResponse,
+            demographicsResponse,
+            schoolsResponse,
+            disastersRiskResponse,
+          ] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/property/${parcelId}`),
+            fetch(`${API_BASE_URL}/api/property_neighbor_sales/${parcelId}`),
+            fetch(`${API_BASE_URL}/api/property_flood_risk/${parcelId}`),
+            fetch(`${API_BASE_URL}/api/property_sales_records/${parcelId}`),
+            fetch(`${API_BASE_URL}/api/property_demographics/${parcelId}`),
+            fetch(`${API_BASE_URL}/api/property_schools/${parcelId}`),
+            fetch(`${API_BASE_URL}/api/property_disasters_risks/${parcelId}`),
+          ]);
+
+          const [
+            propertyData,
+            neighborSalesData,
+            floodRiskData,
+            salesRecordsData,
+            demographicsData,
+            schoolsData,
+            disastersRiskData,
+          ] = await Promise.all([
+            propertyResponse.json(),
+            neighborSalesResponse.json(),
+            floodRiskResponse.json(),
+            salesRecordsResponse.json(),
+            demographicsResponse.json(),
+            schoolsResponse.json(),
+            disastersRiskResponse.json(),
+          ]);
+
+          setPropertyState(propertyData);
+          setNeighborSalesState(neighborSalesData);
+
+          console.log('[DEBUG - API Response] All Property Data:', {
+            property,
+            neighborSales,
+            floodRisk: floodRiskData,
+            salesRecords: salesRecordsData,
+            demographics: demographicsData,
+            schools: schoolsData,
+            disastersRisk: disastersRiskData,
+          });
+
+          setDataLoaded(true);
+        } catch (error) {
+          console.error('[ERROR - API Call] Failed to fetch data:', error);
+        }
+      };
+
+      fetchData();
+    }
+  }, [parcelId, dataLoaded]);
+
+  // Corrigindo dependências ausentes no useEffect
+  useEffect(() => {
+    if (dataLoaded && analytics?.neighborBenchmark !== undefined) {
+      console.log('[DEBUG] Neighbor Benchmark:', {
+        neighborBenchmark: analytics.neighborBenchmark,
+      });
+    }
+  }, [dataLoaded, analytics?.neighborBenchmark, neighborSales, property]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -188,6 +380,8 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
       </div>
     );
   }
+
+  console.log('[DEBUG - PropertyDashboard] analytics.potentialROI:', analytics.potentialROI);
 
   return (
     <div className="min-h-screen bg-background">
@@ -265,7 +459,6 @@ export const PropertyDashboard = ({ parcelId, propertyData, onBack }: PropertyDa
               <AnimatedMetric
                 title="Market Value"
                 value={valuation?.market_value ?? 0}
-                format="currency"
                 icon={DollarSign}
                 colorScheme="primary"
                 animationDelay={0.1}

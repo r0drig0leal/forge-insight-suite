@@ -15,6 +15,7 @@ export async function getPropertyRoiPotential(parcelId: string): Promise<ApiResp
     });
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const raw = await res.json();
+    console.debug('[DEBUG] API Response for getPropertyRoiPotential:', raw);
     // Mapear campos do backend para o padrão esperado no dashboard
     const data: PropertyRoiPotential = {
       parcel_id: raw.parcel_id,
@@ -26,6 +27,10 @@ export async function getPropertyRoiPotential(parcelId: string): Promise<ApiResp
       net_annual_income: Number(raw.net_annual_income),
       // Novo campo de ROI
       roi_potential_percent: raw.roi_percent !== undefined ? Number(raw.roi_percent) : (raw.roi_potential_percent !== undefined ? Number(raw.roi_potential_percent) : undefined),
+      roi_percent: raw.roi_percent !== undefined ? Number(raw.roi_percent) : undefined,
+      roi_neighborhood_avg: raw.roi_neighborhood_avg !== undefined ? Number(raw.roi_neighborhood_avg) : undefined,
+      vs_neighborhood: raw.vs_neighborhood || undefined,
+      annual_rent_income: raw.annual_rent_income !== undefined ? Number(raw.annual_rent_income) : undefined,
       range_low: Number(raw.range_low),
       range_high: Number(raw.range_high),
       calculated_at: raw.calculated_at,

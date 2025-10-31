@@ -1436,6 +1436,7 @@ export interface PropertyAnalytics {
   climateRiskScore: number;
   overallRiskScore: number;
   potentialROI: number;
+  roiPercent?: number; // Alias for potentialROI
   neighborBenchmark: number;
   aiNarrative: string;
   actionableRecommendations: string[];
@@ -1515,6 +1516,7 @@ export const calculatePropertyAnalytics = (
     climateRiskScore,
     overallRiskScore,
     potentialROI,
+    roiPercent: potentialROI, // Alias for potentialROI
     neighborBenchmark,
     aiNarrative,
     actionableRecommendations: recommendations,

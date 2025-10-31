@@ -27,6 +27,7 @@ export const PropertyInput = ({ onAnalyze, isLoading }: PropertyInputProps) => {
   const [processingMessage, setProcessingMessage] = useState<string>("");
   const [recentSearches] = useState(["12345", "67890"]);
   const [addressError, setAddressError] = useState<string | null>(null);
+  const [pendingAddress, setPendingAddress] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -58,18 +59,15 @@ export const PropertyInput = ({ onAnalyze, isLoading }: PropertyInputProps) => {
 
   const handleAddressSelect = async (address: AddressSearchResult) => {
     setSelectedAddress(address);
+    setPendingAddress(address.address_display || address.formattedAddress || address.address || '');
     setIsProcessingParcelId(true);
     setProcessingStatus("running");
     setAddressError(null);
+
     const fullAddress = address.address_display || address.formattedAddress || address.address || '';
-    // Log detalhado para comparação
     console.log('[DEBUG] Endereço selecionado no autocomplete:', fullAddress);
-    console.log('[DEBUG] address.address_display:', address.address_display);
-    console.log('[DEBUG] address.formattedAddress:', address.formattedAddress);
-    console.log('[DEBUG] address.address:', address.address);
-    setParcelId(fullAddress);
+
     try {
-      // Log do valor realmente enviado para o backend
       console.log('[DEBUG] Enviando para /api/parcel-id-by-address (valor exato):', fullAddress);
       const parcelResponse = await apiClient.getParcelIdByAddress(fullAddress);
       if (
@@ -81,7 +79,7 @@ export const PropertyInput = ({ onAnalyze, isLoading }: PropertyInputProps) => {
         const parcelId = parcelResponse.data.parcel_id;
         setCurrentParcelId(parcelId);
         setActualParcelId(parcelId);
-        // Poll usando o parcelId retornado do backend
+        setParcelId(parcelId); // Atualiza apenas após confirmação
         await pollForProcessingCompletion(parcelId);
       } else {
         setProcessingStatus("failed");
@@ -96,6 +94,7 @@ export const PropertyInput = ({ onAnalyze, isLoading }: PropertyInputProps) => {
       setActualParcelId(null);
     } finally {
       setIsProcessingParcelId(false);
+      setPendingAddress(null); // Limpa o estado pendente
     }
   };
 

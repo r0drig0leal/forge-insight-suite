@@ -33,6 +33,7 @@ import { CompletePropertyData, exportToPDF, exportToJSON, exportToCSV } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import floorPlanImage from "@/assets/floor-plan.jpg";
+import { formatDollar } from '@/lib/utils';
 
 interface CompleteReportProps {
   property: PropertyData;
@@ -53,8 +54,8 @@ interface FairMarketRent {
   four_bedroom?: number;
 }
 
-// Simulate fetching fairMarketRent data (replace with actual API call if needed)
-const fairMarketRent: FairMarketRent | null = {
+// Mock or fetch Fair Market Rent Data
+const fairMarketRentData = {
   efficiency: 1.9,
   one_bedroom: 2.0,
   two_bedroom: 2.3,
@@ -131,16 +132,25 @@ export const CompleteReport = ({
   
   // Fetch current market value from dedicated endpoint
   useEffect(() => {
+    console.log("[DEBUG] useEffect triggered with property.parcel_id:", property.parcel_id);
+    if (!property.parcel_id || loadingMarketValue) {
+      console.log("[DEBUG] Skipping fetchMarketValue due to invalid parcel_id or ongoing fetch.");
+      return;
+    }
+
     const fetchMarketValue = async () => {
       try {
+        console.log("[DEBUG] Fetching market value for parcel_id:", property.parcel_id);
         setLoadingMarketValue(true);
         const response = await fetch(`/api/properties/${property.parcel_id}/market-value`);
         if (!response.ok) {
           throw new Error('Failed to fetch market value.');
         }
         const data = await response.json();
+        console.log("[DEBUG] Market value fetched successfully:", data.market_value);
         setCurrentMarketValue(data.market_value);
       } catch (err) {
+        console.error("[DEBUG] Error fetching market value:", err);
         setError('Failed to fetch market value.');
       } finally {
         setLoadingMarketValue(false);
@@ -148,7 +158,7 @@ export const CompleteReport = ({
     };
 
     fetchMarketValue();
-  }, [property.parcel_id]);
+  }, [property.parcel_id, loadingMarketValue]);
 
   const completeData: CompletePropertyData = {
     property,
@@ -275,11 +285,17 @@ export const CompleteReport = ({
   console.log('Value Difference:', valueDifference);
 
   // Relacionar número de quartos com os dados do endpoint
-  console.log("Fair Market Rent Data:", fairMarketRent);
+  console.log("Fair Market Rent Data:", fairMarketRentData);
   console.log("Number of Bedrooms:", property?.beds);
 
-  const monthlyRentEst = fairMarketRent && fairMarketRent.four_bedroom ? fairMarketRent.four_bedroom * 1000 : 0;
-  console.log("Calculated Monthly Rent Est.:", monthlyRentEst);
+  // Calculate Monthly Rent Est. based on Fair Market Rent Data and number of bedrooms
+  const numberOfBedrooms = property?.beds || 0;
+  const fairMarketRentValue = fairMarketRentData[`${numberOfBedrooms}_bedroom`] || fairMarketRentData.four_bedroom;
+  const monthlyRentEst = fairMarketRentValue * 1000; // Assuming rent is in thousands
+
+  console.log(`Fair Market Rent Data:`, fairMarketRentData);
+  console.log(`Number of Bedrooms:`, numberOfBedrooms);
+  console.log(`Calculated Monthly Rent Est.:`, monthlyRentEst);
 
   const potentialAnnualRent = monthlyRentEst * 12;
   console.log("Calculated Potential Annual Rent:", potentialAnnualRent);
@@ -291,6 +307,36 @@ export const CompleteReport = ({
   } else {
     console.log('Invalid values for Market Value or Assessed Value.');
   }
+
+  // Consolidated log for Monthly Rent Est. and Potential Annual Rent
+  console.log(`Monthly Rent Est.: ${monthlyRentEst}, Potential Annual Rent: ${potentialAnnualRent}`);
+
+  console.log("Debugging Investment Metrics:");
+  console.log("Number of Bedrooms (property.beds):", property.beds);
+  console.log("Fair Market Rent Data:", fairMarketRentData);
+  console.log("Calculated Monthly Rent Est.:", monthlyRentEst);
+
+  // Exibir ROI Potential no relatório completo
+  const roiPotential = analytics?.roiPercent || 0;
+
+  console.log('[DEBUG] ROI Potential:', roiPotential);
+  console.log('[DEBUG - CompleteReport] analytics.potentialROI:', analytics.potentialROI);
+
+  // Consolidando logs importantes em um único ponto
+  useEffect(() => {
+    if (property && monthlyRentEst && potentialAnnualRent) {
+      console.log('[DEBUG] Investment Metrics:', {
+        numberOfBedrooms: property.beds,
+        fairMarketRentData,
+        monthlyRentEst,
+        potentialAnnualRent,
+      });
+    }
+  }, [property, monthlyRentEst, potentialAnnualRent]);
+
+  const formattedMarketValue = formatDollar(currentMarketValue);
+  const formattedAssessedValue = formatDollar(lastValidTax.assessed_value);
+  const formattedValueDifference = formatDollar(valueDifference);
 
   return (
     <motion.div 
@@ -343,7 +389,7 @@ export const CompleteReport = ({
             {/* Market Value */}
             <div className="text-center p-4 rounded-lg bg-primary/10">
               <div className="text-3xl font-bold text-primary mb-2">
-                $<AnimatedCounter value={property.current_market_value} duration={2.5} delay={0.3} />
+                {formatDollar(property.current_market_value)}
               </div>
               <p className="text-sm text-muted-foreground font-medium">Current Market Value</p>
             </div>
@@ -357,14 +403,14 @@ export const CompleteReport = ({
             {/* ROI Potential */}
             <div className="text-center p-4 rounded-lg bg-accent/10">
               <div className="text-3xl font-bold text-accent mb-2">
-                <AnimatedCounter value={parseFloat(analytics.potentialROI.toFixed(1))} duration={2.5} delay={0.7} />%
+                <AnimatedCounter value={parseFloat(analytics.potentialROI.toFixed(2))} decimals={2} duration={2.5} delay={0.7} />%
               </div>
               <p className="text-sm text-muted-foreground font-medium">ROI Potential</p>
             </div>
             {/* Rent Potential */}
             <div className="text-center p-4 rounded-lg bg-muted/30">
               <div className="text-3xl font-bold text-foreground mb-2">
-                $<AnimatedCounter value={property.potential_rent_income} duration={2.5} delay={0.9} />
+                {formatDollar(property.potential_rent_income)}
               </div>
               <p className="text-sm text-muted-foreground font-medium">Annual Rent Potential</p>
             </div>
@@ -556,237 +602,17 @@ export const CompleteReport = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Building Value:</span>
-                    <span className="font-bold text-primary">$
-                      <AnimatedCounter 
-                        value={
-                          (typeof currentTax?.building_value === 'string' ? parseFloat(currentTax.building_value) : currentTax?.building_value) > 0
-                            ? (typeof currentTax.building_value === 'string' ? parseFloat(currentTax.building_value) : currentTax.building_value)
-                            : building.bldg_value
-                        }
-                        duration={2}
-                        delay={1.8}
-                      />
+                    <span className="font-bold text-primary">
+                      {formatDollar(
+                        (typeof currentTax?.building_value === 'string'
+                          ? parseFloat(currentTax.building_value)
+                          : currentTax?.building_value) > 0
+                          ? (typeof currentTax.building_value === 'string'
+                              ? parseFloat(currentTax.building_value)
+                              : currentTax.building_value)
+                          : building.bldg_value
+                      )}
                     </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Property Valuation & Financials */}
-      <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" />
-            Property Valuation & Financial Analysis
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="space-y-3">
-              <h4 className="font-semibold text-primary">Current Valuations</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Market Value:</span>
-                  <span className="font-bold text-primary">$
-                    <AnimatedCounter 
-                      value={property.current_market_value} // Usar o mesmo valor do Executive Summary
-                      duration={2}
-                      delay={1.2}
-                    />
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Assessed Value:</span>
-                  <span className="font-bold text-secondary">$
-                    <AnimatedCounter 
-                      value={typeof lastValidTax.assessed_value === 'string' ? parseFloat(lastValidTax.assessed_value) : lastValidTax.assessed_value}
-                      duration={2}
-                      delay={1.4}
-                    />
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Assessment Ratio:</span>
-                  <span className="font-medium">
-                    <AnimatedCounter 
-                      value={
-                        lastValidTax && lastValidTax.market_value > 0
-                          ? parseFloat(((
-                              (typeof lastValidTax.assessed_value === 'string' ? parseFloat(lastValidTax.assessed_value) : lastValidTax.assessed_value) /
-                              (typeof lastValidTax.market_value === 'string' ? parseFloat(lastValidTax.market_value) : lastValidTax.market_value)
-                            ) * 100).toFixed(1))
-                          : 0
-                      }
-                      duration={1.5}
-                      delay={1.6}
-                    />%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Value Difference:</span>
-                  <span className={`font-medium ${
-                    (typeof lastValidTax.market_value === 'string' ? parseFloat(lastValidTax.market_value) : lastValidTax.market_value) >
-                    (typeof lastValidTax.assessed_value === 'string' ? parseFloat(lastValidTax.assessed_value) : lastValidTax.assessed_value)
-                      ? 'text-secondary'
-                      : 'text-destructive'
-                  }`}>
-                    $<AnimatedCounter 
-                      value={valueDifference}
-                      duration={2}
-                      delay={1.8}
-                    />
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h4 className="font-semibold text-primary">Investment Metrics</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Potential Annual Rent:</span>
-                  <span className="font-bold text-secondary">$<AnimatedCounter value={property.potential_rent_income} duration={2} delay={1.3} /></span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Monthly Rent Est.:</span>
-                  <span className="font-medium">$<AnimatedCounter value={parseInt((property.potential_rent_income / 12).toFixed(0))} duration={1.5} delay={1.5} /></span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">ROI Potential:</span>
-                  <span className="font-bold text-accent">
-                    <AnimatedCounter value={parseFloat(analytics.potentialROI.toFixed(1))} duration={1.5} delay={1.7} />%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">vs Neighborhood:</span>
-                  <span className={`font-medium ${analytics.neighborBenchmark > 0 ? 'text-secondary' : 'text-destructive'}`}>
-                    {analytics.neighborBenchmark > 0 ? '+' : ''}<AnimatedCounter value={parseFloat(Math.abs(analytics.neighborBenchmark).toFixed(1))} duration={1.5} delay={1.9} />%
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h4 className="font-semibold text-primary">Cost Estimates</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Renovation Cost:</span>
-                  <span className="font-medium">${property.estimated_renovation_cost.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Eviction Cost:</span>
-                  <span className="font-medium">${property.estimated_eviction_cost.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Risk Score:</span>
-                  <Badge variant="outline" className="bg-risk-medium/10 text-risk-medium border-risk-medium/20">
-                    {property.risk_score}%
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tax Records & Assessment Details */}
-      {currentTax && (
-        <Card className="shadow-soft animate-fade-in hover-scale transition-smooth">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileCheck className="h-5 w-5 text-primary" />
-              Tax Records & Assessment Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-3">
-                <h4 className="font-semibold text-primary">Assessment Information</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tax Year:</span>
-                    <span className="font-medium">{currentTax.tax_year}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Market %:</span>
-                    <span className="font-medium">{currentTax.market_percent}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Assessed %:</span>
-                    <span className="font-medium">{currentTax.assessed_percent}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Valuation Method:</span>
-                    <span className="font-medium">{currentTax.valuation_method}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Certified:</span>
-                    <Badge variant={currentTax.is_certified ? "default" : "secondary"}>
-                      {currentTax.is_certified ? "Yes" : "No"}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-semibold text-primary">Value Breakdown</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Land Value:</span>
-                    <span className="font-medium">${currentTax.land_value.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Building Value:</span>
-                    <span className="font-medium">${(typeof currentTax.building_value === 'string' ? parseFloat(currentTax.building_value) : currentTax.building_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Features Value:</span>
-                    <span className="font-medium">${currentTax.features_value.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Market Value:</span>
-                    <span className="font-bold text-primary">${currentTax.market_value.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Assessed:</span>
-                    <span className="font-bold text-secondary">${currentTax.assessed_value.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-semibold text-primary">Exemptions & Benefits</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Homestead:</span>
-                    <Badge variant={currentTax.is_homestead ? "default" : "secondary"}>
-                      {currentTax.is_homestead ? "Yes" : "No"}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Agricultural:</span>
-                    <Badge variant={currentTax.is_ag ? "default" : "secondary"}>
-                      {currentTax.is_ag ? "Yes" : "No"}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Original HX:</span>
-                    <span className="font-medium">${currentTax.original_hx.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Additional HX:</span>
-                    <span className="font-medium">${currentTax.additional_hx.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Other Exemptions:</span>
-                    <span className="font-medium">${currentTax.other_exemptions.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tax Savings:</span>
-                    <span className="font-bold text-secondary">${currentTax.tax_savings.toLocaleString()}</span>
                   </div>
                 </div>
               </div>

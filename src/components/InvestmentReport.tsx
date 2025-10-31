@@ -35,14 +35,14 @@ export const InvestmentReport = ({ property, taxRecords, neighborSales, building
   const investmentMetrics = [
     {
       title: "Rental Yield",
-      value: `${analytics.potentialROI.toFixed(1)}%`,
+      value: `${analytics.potentialROI.toFixed(2)}%`,
       subtitle: "Annual ROI potential",
       icon: DollarSign,
       color: getROIColor(analytics.potentialROI),
     },
     {
       title: "Price vs Market",
-      value: `${analytics.neighborBenchmark > 0 ? '+' : ''}${analytics.neighborBenchmark.toFixed(1)}%`,
+      value: `${Math.abs(analytics.neighborBenchmark).toFixed(1)}%`,
       subtitle: "Compared to neighbors",
       icon: BarChart3,
       color: analytics.neighborBenchmark > 0 ? "secondary" : "destructive",
@@ -55,6 +55,12 @@ export const InvestmentReport = ({ property, taxRecords, neighborSales, building
       color: "primary",
     }
   ];
+
+  console.log('[DEBUG - InvestmentReport] analytics.potentialROI:', analytics.potentialROI);
+  console.log('[DEBUG - InvestmentReport] Investment Metrics:', {
+    potentialROI: analytics.potentialROI,
+    numberOfBedrooms: property.beds,
+  });
 
   return (
     <motion.div 
@@ -78,9 +84,10 @@ export const InvestmentReport = ({ property, taxRecords, neighborSales, building
               <div className="text-center">
                 <div className="text-6xl font-bold mb-2" style={{ color: `hsl(var(--${getROIColor(analytics.potentialROI)}))` }}>
                   <AnimatedCounter 
-                    value={parseFloat(analytics.potentialROI.toFixed(1))} 
+                    value={parseFloat(analytics.potentialROI.toFixed(2))} 
                     duration={2}
                     delay={0.3}
+                    decimals={2}
                   />%
                 </div>
                 <Badge variant="outline" className={`bg-${getROIColor(analytics.potentialROI)}/10 text-${getROIColor(analytics.potentialROI)} border-${getROIColor(analytics.potentialROI)}/20`}>
@@ -140,9 +147,9 @@ export const InvestmentReport = ({ property, taxRecords, neighborSales, building
               <CardContent>
                 <div className="text-2xl font-bold mb-1" style={{ color: `hsl(var(--${metric.color}))` }}>
                   {metric.title.includes('Rental Yield') ? (
-                    <><AnimatedCounter value={parseFloat(analytics.potentialROI.toFixed(1))} duration={2} delay={0.5 + index * 0.2} />%</>
+                    <><AnimatedCounter value={parseFloat(analytics.potentialROI.toFixed(2))} duration={2} delay={0.5 + index * 0.2} decimals={2} />%</>
                   ) : metric.title.includes('Price vs Market') ? (
-                    <>{analytics.neighborBenchmark > 0 ? '+' : ''}<AnimatedCounter value={parseFloat(Math.abs(analytics.neighborBenchmark).toFixed(1))} duration={2} delay={0.5 + index * 0.2} />%</>
+                    <><AnimatedCounter value={parseFloat(Math.abs(analytics.neighborBenchmark).toFixed(1))} duration={2} delay={0.5 + index * 0.2} />%</>
                   ) : metric.title.includes('Cash Flow') ? (
                     <>$<AnimatedCounter value={parseInt(((analytics.potentialROI / 100) * property.current_market_value / 12).toFixed(0))} duration={2} delay={0.5 + index * 0.2} /></>
                   ) : (
@@ -247,7 +254,7 @@ export const InvestmentReport = ({ property, taxRecords, neighborSales, building
                   <div className="flex justify-between">
                     <span className="text-sm">Price Difference</span>
                     <span className={`font-medium ${analytics.neighborBenchmark > 0 ? 'text-secondary' : 'text-destructive'}`}>
-                      {analytics.neighborBenchmark > 0 ? '+' : ''}<AnimatedCounter value={parseFloat(Math.abs(analytics.neighborBenchmark).toFixed(1))} duration={1.5} delay={1.4} />%
+                      {analytics.neighborBenchmark > 0 ? '' : ''}<AnimatedCounter value={parseFloat(Math.abs(analytics.neighborBenchmark).toFixed(1))} duration={1.5} delay={1.4} />%
                     </span>
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
 import { MarketHistory } from "@/lib/mockData";
+import { formatDollar } from '@/lib/utils';
 
 interface TrendSparklinesProps {
   marketHistory: MarketHistory | null;
@@ -31,9 +32,7 @@ export const TrendSparklines = ({ marketHistory }: TrendSparklinesProps) => {
     return change >= 0 ? "↗" : "↘";
   };
 
-  const formatCurrency = (value: number) => {
-    return `$${(value / 1000).toFixed(0)}K`;
-  };
+  const formatCurrency = formatDollar;
 
   return (
     <motion.div
@@ -60,7 +59,7 @@ export const TrendSparklines = ({ marketHistory }: TrendSparklinesProps) => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-lg font-bold">
-                  {formatCurrency(lastValue.market_value)}
+                  {formatDollar(lastValue.market_value)}
                 </div>
                 <div className={`text-sm flex items-center gap-1 ${getChangeColor(marketValueChange)}`}>
                   <span>{getChangeIcon(marketValueChange)}</span>
@@ -95,7 +94,7 @@ export const TrendSparklines = ({ marketHistory }: TrendSparklinesProps) => {
 
             <div className="text-xs text-muted-foreground">
               <Calendar className="inline h-3 w-3 mr-1" />
-              Last 12 months • {formatCurrency(firstValue.market_value)} → {formatCurrency(lastValue.market_value)}
+              Last 12 months • {formatDollar(firstValue.market_value)} → {formatDollar(lastValue.market_value)}
             </div>
           </motion.div>
         </CardContent>

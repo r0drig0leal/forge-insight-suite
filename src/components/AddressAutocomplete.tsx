@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { useAddressAutocomplete } from '@/hooks/useAddressAutocomplete';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import type { AddressSearchResult } from '@/lib/api';
 
@@ -24,34 +23,53 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isAddressValid, setIsAddressValid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { suggestions, isLoading, error, searchAddresses } = useAddressAutocomplete();
+  // Simulação do hook useAddressAutocomplete
+  const suggestions = useMemo(() => [], []);
 
-  console.log('🔍 AddressAutocomplete - Rendering:', {
-    value,
-    isOpen,
-    suggestionsCount: suggestions.length,
-    isLoading,
-    error
-  });
+  const isLoading = false;
+  const error = null;
+  const searchAddresses = (term: string) => {
+    console.log(`Simulando busca por: ${term}`);
+  };
 
-  useEffect(() => {
-    if (value.trim().length >= 2) {
-      searchAddresses(value);
+  const debounce = <T extends (...args: unknown[]) => void>(func: T, delay: number): T => {
+    let timer: NodeJS.Timeout;
+    return ((...args: Parameters<T>) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => func(...args), delay);
+    }) as T;
+  };
+
+  const debouncedSearch = debounce((searchTerm: string) => {
+    if (searchTerm.trim().length >= 2) {
+      searchAddresses(searchTerm);
       setIsOpen(true);
     } else {
       setIsOpen(false);
     }
-  }, [value, searchAddresses]);
+  }, 300);
+
+  useEffect(() => {
+    debouncedSearch(value);
+  }, [value, debouncedSearch]);
 
   useEffect(() => {
     setSelectedIndex(-1);
   }, [suggestions]);
 
+  useEffect(() => {
+    if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+      setIsAddressValid(true);
+    } else {
+      setIsAddressValid(false);
+    }
+  }, [selectedIndex, suggestions]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    console.log('📝 Input changed:', newValue);
     onChange(newValue);
   };
 
@@ -59,6 +77,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     console.log('🎯 Suggestion clicked:', suggestion);
     onChange(suggestion.address_display || suggestion.formattedAddress || suggestion.address);
     setIsOpen(false);
+    setIsAddressValid(true); // Marca o endereço como válido
     onSelect?.(suggestion);
     inputRef.current?.focus();
   };
@@ -88,6 +107,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       case 'Escape':
         setIsOpen(false);
         setSelectedIndex(-1);
+        setIsAddressValid(false);
         break;
     }
   };
@@ -96,6 +116,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     setTimeout(() => {
       setIsOpen(false);
       setSelectedIndex(-1);
+      setIsAddressValid(false);
     }, 200);
   };
 
